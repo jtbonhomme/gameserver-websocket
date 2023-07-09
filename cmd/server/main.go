@@ -9,8 +9,10 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/jtbonhomme/test-gameserver-websocket/internal/manager"
-	"github.com/jtbonhomme/test-gameserver-websocket/internal/websocket"
+	"github.com/jtbonhomme/pubsub"
+
+	"github.com/jtbonhomme/gameserver-websocket/internal/manager"
+	"github.com/jtbonhomme/gameserver-websocket/internal/websocket"
 )
 
 const skipFrameCount = 3
@@ -41,9 +43,12 @@ func main() {
 	logger := zerolog.New(output).With().Timestamp().CallerWithSkipFrameCount(skipFrameCount).Logger()
 
 	// 1. Server Setup
-	m := manager.New(&logger)
-	srv := websocket.New(&logger, m)
+	broker := pubsub.New(&logger)
+	srv := websocket.New(&logger, broker)
 	srv.Start()
+
+	mgr := manager.New(&logger)
+	mgr.Start()
 
 	// Waiting signal
 	interrupt := make(chan os.Signal, 1)
@@ -54,6 +59,7 @@ func main() {
 		logger.Info().Msg("signal: " + s.String())
 		// Shutdown
 		srv.Shutdown()
+		mgr.Shutdown()
 	}
 
 	logger.Info().Msg("Exit")

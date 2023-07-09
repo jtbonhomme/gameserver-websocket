@@ -30,6 +30,8 @@ var rideStatus = []string{"STARTED", "WAITING", "FINISHED", "BLOCKED"}
 
 func main() {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// connect to server websocket (todo: encapsulate in server package .Dial public function)
 	origin := "http://localhost/"
 	url := "ws://localhost:12345/connect"
 	ws, err := websocket.Dial(url, "", origin)
@@ -37,6 +39,23 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// subscribe to general topic
+	register := pubsub.Message{
+		Action: pubsub.SUBSCRIBE,
+		Topic:  "com.jtbonhomme.pubsub.general",
+	}
+
+	msgR, err := json.Marshal(register)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = ws.Write(msgR)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// send a message
 	payload, err := json.Marshal(RideMessage{
 		RideID:         uuid.NewString(),
 		PointIdx:       r.Intn(10),
@@ -52,13 +71,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	m := pubsub.Message{
-		Action:  "publish",
+	publish := pubsub.Message{
+		Action:  pubsub.PUBLISH,
 		Topic:   "com.jtbonhomme.pubsub.rides",
 		Payload: payload,
 	}
 
-	msg, err := json.Marshal(m)
+	msg, err := json.Marshal(publish)
 	if err != nil {
 		log.Fatal(err)
 	}

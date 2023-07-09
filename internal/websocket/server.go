@@ -10,8 +10,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/jtbonhomme/pubsub"
-
-	"github.com/jtbonhomme/test-gameserver-websocket/internal/manager"
 )
 
 type Server struct {
@@ -19,16 +17,15 @@ type Server struct {
 	ps            *pubsub.Broker
 	e             *echo.Echo
 	nameGenerator namegenerator.Generator
-	manager       *manager.Manager
 }
 
-func New(l *zerolog.Logger, m *manager.Manager) *Server {
+func New(l *zerolog.Logger, ps *pubsub.Broker) *Server {
 	seed := time.Now().UTC().UnixNano()
 
 	return &Server{
 		log:           l,
+		ps:            ps,
 		nameGenerator: namegenerator.NewNameGenerator(seed),
-		manager:       m,
 	}
 }
 
@@ -46,12 +43,9 @@ func (s *Server) Start() {
 	s.e.Static("/", "panel")
 	s.e.GET("/connect", s.connect)
 
-	s.manager.Start()
 	s.e.Logger.Fatal(s.e.Start(":12345"))
 }
 
 func (s *Server) Shutdown() {
 	s.e.Logger.Info("Server shuting down ...")
-	// Shutdown
-	s.manager.Shutdown()
 }

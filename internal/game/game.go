@@ -1,7 +1,7 @@
 package game
 
 import (
-	"github.com/jtbonhomme/test-gameserver-websocket/internal/players"
+	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 	"github.com/rs/zerolog"
 )
 

@@ -1,6 +1,8 @@
-module github.com/jtbonhomme/test-gameserver-websocket
+module github.com/jtbonhomme/gameserver-websocket
 
 go 1.20
+
+replace github.com/jtbonhomme/pubsub => ../pubsub
 
 require (
 	github.com/google/uuid v1.3.0
