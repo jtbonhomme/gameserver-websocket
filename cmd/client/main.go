@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 
 	"github.com/jtbonhomme/pubsub"
 )
@@ -27,15 +30,42 @@ const tsFormat string = "2006-01-02T15:04:05.0000-07:00"
 
 var rideStatus = []string{"STARTED", "WAITING", "FINISHED", "BLOCKED"}
 
-func main() {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+func receiveMessageHandler(payload []byte) error {
+	m := pubsub.Message{}
 
-	c := pubsub.Client{}
+	err := json.Unmarshal(payload, &m)
+	if err != nil {
+		return fmt.Errorf("error unmarshaling payload: %w", err)
+	}
+	fmt.Printf("received message/ %#v\n", m)
+	return nil
+}
+
+func main() {
+	var err error
+
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// Init logger
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	output := zerolog.ConsoleWriter{
+		Out:           os.Stderr,
+		TimeFormat:    time.RFC3339,
+		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[client] %s", i) },
+	}
+	logger := zerolog.New(output).With().Timestamp().Logger()
+
+	c := pubsub.NewClient(&logger)
 	// connect to server websocket
 	origin := "http://localhost/"
 	url := "ws://localhost:12345/connect"
-	c.Dial(url, origin)
-	c.Register("com.jtbonhomme.pubsub.general")
+	err = c.Dial(url, origin)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("error dialing websocket server")
+	}
+	err = c.Register("com.jtbonhomme.pubsub.general")
+	if err != nil {
+		logger.Fatal().Err(err).Msg("error registering to topic")
+	}
 
 	// send a message
 	payload, err := json.Marshal(RideMessage{
@@ -53,5 +83,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	c.Publish("com.jtbonhomme.pubsub.rides", payload)
+	c.Publish("com.jtbonhomme.pubsub.game", payload)
+
+	c.ListenAndRead(receiveMessageHandler)
 }
