@@ -1,13 +1,13 @@
 package players
 
 import (
-	"github.com/jtbonhomme/pubsub/client"
+	"github.com/jtbonhomme/pubsub"
 	"github.com/rs/zerolog"
 )
 
 type Player struct {
 	log    *zerolog.Logger
-	client *client.Client
+	client *pubsub.Client
 }
 
 func New(l *zerolog.Logger) *Player {
