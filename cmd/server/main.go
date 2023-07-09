@@ -39,7 +39,7 @@ func main() {
 		Out:        os.Stderr,
 		TimeFormat: time.RFC3339,
 	}
-	logger := zerolog.New(output).With().Timestamp().CallerWithSkipFrameCount(skipFrameCount).Logger()
+	logger := zerolog.New(output).With().Timestamp().Logger()
 
 	// 1. Server Setup
 	logger.Info().Msg("Server: start broker")
@@ -63,6 +63,5 @@ func main() {
 		broker.Shutdown()
 		mgr.Shutdown()
 	}
-
 	logger.Info().Msg("Exit")
 }

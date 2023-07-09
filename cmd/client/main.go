@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/net/websocket"
 
 	"github.com/jtbonhomme/pubsub"
 )
@@ -31,29 +30,12 @@ var rideStatus = []string{"STARTED", "WAITING", "FINISHED", "BLOCKED"}
 func main() {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	// connect to server websocket (todo: encapsulate in server package .Dial public function)
+	c := pubsub.Client{}
+	// connect to server websocket
 	origin := "http://localhost/"
 	url := "ws://localhost:12345/connect"
-	ws, err := websocket.Dial(url, "", origin)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// subscribe to general topic
-	register := pubsub.Message{
-		Action: pubsub.SUBSCRIBE,
-		Topic:  "com.jtbonhomme.pubsub.general",
-	}
-
-	msgR, err := json.Marshal(register)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = ws.Write(msgR)
-	if err != nil {
-		log.Fatal(err)
-	}
+	c.Dial(url, origin)
+	c.Register("com.jtbonhomme.pubsub.general")
 
 	// send a message
 	payload, err := json.Marshal(RideMessage{
@@ -71,19 +53,5 @@ func main() {
 		log.Fatal(err)
 	}
 
-	publish := pubsub.Message{
-		Action:  pubsub.PUBLISH,
-		Topic:   "com.jtbonhomme.pubsub.rides",
-		Payload: payload,
-	}
-
-	msg, err := json.Marshal(publish)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = ws.Write(msg)
-	if err != nil {
-		log.Fatal(err)
-	}
+	c.Publish("com.jtbonhomme.pubsub.rides", payload)
 }
