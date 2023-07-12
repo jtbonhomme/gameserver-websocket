@@ -1,7 +1,6 @@
 package manager
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -27,8 +26,9 @@ type Manager struct {
 	started         bool
 	err             chan error
 	shutdownTimeout time.Duration
-	shutdownChannel chan struct{} // Channel used to stop manager.
+	shutdownChannel chan bool // Channel used to stop manager.
 	waitGroup       *sync.WaitGroup
+	c               *pubsub.Client
 }
 
 func New(l *zerolog.Logger) *Manager {
@@ -42,49 +42,55 @@ func New(l *zerolog.Logger) *Manager {
 		log:             &logger,
 		games:           []*game.Game{},
 		shutdownTimeout: _defaultShutdownTimeout,
-		shutdownChannel: make(chan struct{}),
+		shutdownChannel: make(chan bool),
 		err:             make(chan error),
 		waitGroup:       &sync.WaitGroup{},
 	}
 }
 
+func (m *Manager) listen(msg []byte) error {
+	m.log.Info().Msgf("received message %s", string(msg))
+	return nil
+}
+
 func (m *Manager) Start() {
+	m.c = pubsub.NewClient(m.log, "manager-pubsub-client")
 	var err error
+	m.log.Info().Msg("starting ...")
+
+	// connect to server websocket
+	origin := "http://localhost/"
+	url := "ws://localhost:12345/connect"
+	err = m.c.Dial(url, origin)
+	if err != nil {
+		m.err <- err
+	}
+	err = m.c.Register("com.jtbonhomme.pubsub.general")
+	if err != nil {
+		m.err <- err
+	}
+	err = m.c.Register("com.jtbonhomme.pubsub.game")
+	if err != nil {
+		m.err <- err
+	}
+
+	m.started = true
+
+	m.c.Read(m.listen)
+
 	m.waitGroup.Add(1)
-
-	go func(shutdownChannel chan struct{}, wg *sync.WaitGroup) {
-		m.log.Info().Msg("Manager starting ...")
+	go func(shutdownChannel chan bool, wg *sync.WaitGroup) {
 		defer wg.Done()
-		c := pubsub.NewClient(m.log)
-		// connect to server websocket
-		origin := "http://localhost/"
-		url := "ws://localhost:12345/connect"
-		err = c.Dial(url, origin)
-		if err != nil {
-			m.err <- err
-		}
-		err = c.Register("com.jtbonhomme.pubsub.general")
-		if err != nil {
-			m.err <- err
-		}
-		err = c.Register("com.jtbonhomme.pubsub.game")
-		if err != nil {
-			m.err <- err
-		}
-
-		m.started = true
-
 		for {
 			select {
 			case <-shutdownChannel:
-				m.log.Info().Msg("Shutdown manager goroutine")
 				return
 			default:
 				runtime.Gosched()
 			}
 		}
-
 	}(m.shutdownChannel, m.waitGroup)
+
 }
 
 // Error -.
@@ -93,11 +99,13 @@ func (m *Manager) Error() <-chan error {
 }
 
 func (m *Manager) Shutdown() {
-	_, cancel := context.WithTimeout(context.Background(), m.shutdownTimeout)
-	defer cancel()
-
-	m.log.Info().Msg("Manager shuting down ...")
 	m.started = false
+	m.log.Info().Msg("shuting down ...")
+	m.shutdownChannel <- true
+	m.log.Info().Msgf("waiting for go routine to stop ...")
+	m.waitGroup.Wait()
+	m.log.Info().Msgf("all go routine stopped")
 	close(m.shutdownChannel)
-	m.waitGroup.Wait() // wait for all goroutines
+	m.c.Shutdown()
+	m.log.Info().Msgf("stopped")
 }

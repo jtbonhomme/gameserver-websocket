@@ -54,7 +54,7 @@ func main() {
 	}
 	logger := zerolog.New(output).With().Timestamp().Logger()
 
-	c := pubsub.NewClient(&logger)
+	c := pubsub.NewClient(&logger, "main-pubsub-client")
 	// connect to server websocket
 	origin := "http://localhost/"
 	url := "ws://localhost:12345/connect"
@@ -85,5 +85,5 @@ func main() {
 
 	c.Publish("com.jtbonhomme.pubsub.game", payload)
 
-	c.ListenAndRead(receiveMessageHandler)
+	c.Read(receiveMessageHandler)
 }
