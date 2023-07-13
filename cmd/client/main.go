@@ -1,50 +1,59 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"log"
-	"math/rand"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/google/uuid"
+	centrifuge "github.com/centrifugal/centrifuge-go"
 	"github.com/rs/zerolog"
-
-	"github.com/jtbonhomme/pubsub"
 )
-
-type RideMessage struct {
-	RideID         string  `json:"ride_id"`
-	PointIdx       int     `json:"point_idx"`
-	Latitude       float64 `json:"latitude"`
-	Longitude      float64 `json:"longitude"`
-	Timestamp      string  `json:"timestamp"`
-	MeterReading   float64 `json:"meter_reading"`
-	MeterIncrement float64 `json:"meter_increment"`
-	RideStatus     string  `json:"ride_status"`
-	PassengerCount int     `json:"passenger_count"`
-}
 
 const tsFormat string = "2006-01-02T15:04:05.0000-07:00"
 
-var rideStatus = []string{"STARTED", "WAITING", "FINISHED", "BLOCKED"}
+func newClient(log *zerolog.Logger) *centrifuge.Client {
+	wsURL := "ws://localhost:8000/connection/websocket"
+	c := centrifuge.NewJsonClient(wsURL, centrifuge.Config{
+		Name:    "centrifuge-go",
+		Data:    []byte(`{"name":"totoro"}`),
+		Version: "0.0.1",
+	})
 
-func receiveMessageHandler(payload []byte) error {
-	m := pubsub.Message{}
+	c.OnConnecting(func(_ centrifuge.ConnectingEvent) {
+		log.Info().Msg("Connecting")
+	})
+	c.OnConnected(func(_ centrifuge.ConnectedEvent) {
+		log.Info().Msg("Connected")
+	})
+	c.OnDisconnected(func(_ centrifuge.DisconnectedEvent) {
+		log.Info().Msg("Disconnected")
+	})
+	c.OnError(func(e centrifuge.ErrorEvent) {
+		log.Info().Msgf("error: %s", e.Error.Error())
+	})
+	c.OnMessage(func(e centrifuge.MessageEvent) {
+		log.Info().Msgf("Message received from server %s", string(e.Data))
 
-	err := json.Unmarshal(payload, &m)
-	if err != nil {
-		return fmt.Errorf("error unmarshaling payload: %w", err)
-	}
-	fmt.Printf("received message/ %#v\n", m)
-	return nil
+		// When issue blocking requests from inside event handler we must use
+		// a goroutine. Otherwise, connection read loop will be blocked.
+		go func() {
+			result, err := c.RPC(context.Background(), "method", []byte(`{"action":"eat"}`))
+			if err != nil {
+				log.Info().Msgf("%w", err)
+				return
+			}
+			log.Printf("RPC result 2: %s", string(result.Data))
+		}()
+	})
+	return c
 }
 
 func main() {
 	var err error
 
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// Init logger
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	output := zerolog.ConsoleWriter{
@@ -52,38 +61,32 @@ func main() {
 		TimeFormat:    time.RFC3339,
 		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[client] %s", i) },
 	}
-	logger := zerolog.New(output).With().Timestamp().Logger()
+	log := zerolog.New(output).With().Timestamp().Logger()
+	log.Info().Msg("start client")
+	c := newClient(&log)
+	defer c.Close()
 
-	c := pubsub.NewClient(&logger, "main-pubsub-client")
-	// connect to server websocket
-	origin := "http://localhost/"
-	url := "ws://localhost:12345/connect"
-	err = c.Dial(url, origin)
+	err = c.Connect()
 	if err != nil {
-		logger.Fatal().Err(err).Msg("error dialing websocket server")
-	}
-	err = c.Register("com.jtbonhomme.pubsub.general")
-	if err != nil {
-		logger.Fatal().Err(err).Msg("error registering to topic")
+		log.Fatal().Msgf("connect error: %s", err.Error())
 	}
 
-	// send a message
-	payload, err := json.Marshal(RideMessage{
-		RideID:         uuid.NewString(),
-		PointIdx:       r.Intn(10),
-		Latitude:       r.Float64() + float64(48),
-		Longitude:      r.Float64() + float64(2),
-		Timestamp:      time.Now().Format(tsFormat),
-		MeterReading:   r.Float64() * 50,
-		MeterIncrement: r.Float64() * 2,
-		PassengerCount: r.Intn(5),
-		RideStatus:     rideStatus[r.Intn(3)],
-	})
+	result, err := c.RPC(context.Background(), "method", []byte(`{"action":"drink"}`))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msgf("rpc error: %s", err.Error())
+		return
 	}
+	log.Printf("RPC result: %s", string(result.Data))
 
-	c.Publish("com.jtbonhomme.pubsub.game", payload)
+	// Waiting signal
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
-	c.Read(receiveMessageHandler)
+	select {
+	case s := <-interrupt:
+		log.Info().Msg("received signal: " + s.String())
+		// Shutdown
+		log.Info().Msg("start shutdown procedure")
+	}
+	log.Info().Msg("exit")
 }

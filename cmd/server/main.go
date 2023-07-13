@@ -9,8 +9,6 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/jtbonhomme/pubsub"
-
 	"github.com/jtbonhomme/gameserver-websocket/internal/manager"
 )
 
@@ -24,17 +22,15 @@ func main() {
 	}
 	logger := zerolog.New(output).With().Timestamp().Logger()
 
-	// 1. Server Setup
-	logger.Info().Msg("start broker")
-	broker := pubsub.New(&logger)
-	broker.Start()
+	logger.Info().Msg("start manager")
+	mgr := manager.New(&logger)
+	err := mgr.Start()
+	if err != nil {
+		logger.Panic().Msgf("manager start error: %w", err)
+	}
 
 	// todo: use websocket to send logs: provide an io.Writer implementing object
 	// todo: manager websocket availability (because it starts in a goroutine)
-
-	logger.Info().Msg("start manager")
-	mgr := manager.New(&logger)
-	mgr.Start()
 
 	// Waiting signal
 	interrupt := make(chan os.Signal, 1)
@@ -45,10 +41,7 @@ func main() {
 		logger.Info().Msg("received signal: " + s.String())
 		// Shutdown
 		logger.Info().Msg("start shutdown procedure")
-		broker.Shutdown()
 		mgr.Shutdown()
-	case err := <-broker.Error():
-		logger.Err(err).Msg("broker error")
 	case err := <-mgr.Error():
 		logger.Err(err).Msg("manager error")
 	}

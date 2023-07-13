@@ -1,34 +1,46 @@
 package manager
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
-	"runtime"
-	"sync"
 	"time"
 
 	"github.com/jtbonhomme/gameserver-websocket/internal/game"
 	"github.com/jtbonhomme/gameserver-websocket/internal/players"
-	"github.com/jtbonhomme/pubsub"
+
+	"github.com/centrifugal/centrifuge"
 	"github.com/rs/zerolog"
-	"golang.org/x/net/websocket"
 )
 
-const (
-	_defaultShutdownTimeout = 3 * time.Second
-)
+const defaultShutdownTimeout = 3 * time.Second
 
 type Manager struct {
 	log             *zerolog.Logger
-	conn            *websocket.Conn // Client websocket connection.
 	games           []*game.Game
 	player          []players.Player
 	started         bool
 	err             chan error
+	node            *centrifuge.Node
 	shutdownTimeout time.Duration
-	shutdownChannel chan bool // Channel used to stop manager.
-	waitGroup       *sync.WaitGroup
-	c               *pubsub.Client
+}
+
+func auth(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		// Put authentication Credentials into request Context.
+		// Since we don't have any session backend here we simply
+		// set user ID as empty string. Users with empty ID called
+		// anonymous users, in real app you should decide whether
+		// anonymous users allowed to connect to your server or not.
+		cred := &centrifuge.Credentials{
+			UserID: "",
+		}
+		newCtx := centrifuge.SetCredentials(ctx, cred)
+		r = r.WithContext(newCtx)
+		h.ServeHTTP(w, r)
+	})
 }
 
 func New(l *zerolog.Logger) *Manager {
@@ -38,59 +50,13 @@ func New(l *zerolog.Logger) *Manager {
 		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[manager] %s", i) },
 	}
 	logger := l.Output(output)
+
 	return &Manager{
 		log:             &logger,
 		games:           []*game.Game{},
-		shutdownTimeout: _defaultShutdownTimeout,
-		shutdownChannel: make(chan bool),
 		err:             make(chan error),
-		waitGroup:       &sync.WaitGroup{},
+		shutdownTimeout: defaultShutdownTimeout,
 	}
-}
-
-func (m *Manager) listen(msg []byte) error {
-	m.log.Info().Msgf("received message %s", string(msg))
-	return nil
-}
-
-func (m *Manager) Start() {
-	m.c = pubsub.NewClient(m.log, "manager-pubsub-client")
-	var err error
-	m.log.Info().Msg("starting ...")
-
-	// connect to server websocket
-	origin := "http://localhost/"
-	url := "ws://localhost:12345/connect"
-	err = m.c.Dial(url, origin)
-	if err != nil {
-		m.err <- err
-	}
-	err = m.c.Register("com.jtbonhomme.pubsub.general")
-	if err != nil {
-		m.err <- err
-	}
-	err = m.c.Register("com.jtbonhomme.pubsub.game")
-	if err != nil {
-		m.err <- err
-	}
-
-	m.started = true
-
-	m.c.Read(m.listen)
-
-	m.waitGroup.Add(1)
-	go func(shutdownChannel chan bool, wg *sync.WaitGroup) {
-		defer wg.Done()
-		for {
-			select {
-			case <-shutdownChannel:
-				return
-			default:
-				runtime.Gosched()
-			}
-		}
-	}(m.shutdownChannel, m.waitGroup)
-
 }
 
 // Error -.
@@ -98,14 +64,72 @@ func (m *Manager) Error() <-chan error {
 	return m.err
 }
 
+func (m *Manager) Start() error {
+	m.log.Info().Msg("starting ...")
+
+	node, err := centrifuge.New(centrifuge.Config{})
+	if err != nil {
+		return fmt.Errorf("error creating centrifuge node: %w", err)
+	}
+	m.node = node
+	m.node.OnConnect(func(client *centrifuge.Client) {
+		// In our example transport will always be Websocket but it can also be SockJS.
+		transportName := client.Transport().Name()
+		// In our example clients connect with JSON protocol but it can also be Protobuf.
+		transportProto := client.Transport().Protocol()
+		m.log.Info().Msgf("client %s (%s) connected via %s (%s)", client.ID(), string(client.Info()), transportName, transportProto)
+
+		client.OnSubscribe(func(e centrifuge.SubscribeEvent, cb centrifuge.SubscribeCallback) {
+			m.log.Info().Msgf("client %s (%s) subscribes on channel %s", client.ID(), string(client.Info()), e.Channel)
+			cb(centrifuge.SubscribeReply{}, nil)
+		})
+
+		client.OnPublish(func(e centrifuge.PublishEvent, cb centrifuge.PublishCallback) {
+			m.log.Info().Msgf("client %s (%s) publishes into channel %s: %s", client.ID(), string(client.Info()), e.Channel, string(e.Data))
+			cb(centrifuge.PublishReply{}, nil)
+		})
+
+		client.OnDisconnect(func(e centrifuge.DisconnectEvent) {
+			m.log.Info().Msgf("client %s (%s) disconnected", client.ID(), string(client.Info()))
+		})
+
+		client.OnRPC(func(e centrifuge.RPCEvent, c centrifuge.RPCCallback) {
+			m.log.Info().Msgf("client RPC: %s %s", e.Method, string(e.Data))
+			c(centrifuge.RPCReply{Data: []byte(`{"reply": "ok to ` + e.Method + `"}`)}, nil)
+		})
+	})
+
+	// Run node. This method does not block. See also node.Shutdown method
+	// to finish application gracefully.
+	if err := m.node.Run(); err != nil {
+		return fmt.Errorf("error running centrifuge node: %w", err)
+	}
+
+	// Now configure HTTP routes.
+
+	// Serve Websocket connections using WebsocketHandler.
+	wsHandler := centrifuge.NewWebsocketHandler(m.node, centrifuge.WebsocketConfig{})
+	http.Handle("/connection/websocket", auth(wsHandler))
+
+	// The second route is for serving index.html file.
+	http.Handle("/", http.FileServer(http.Dir("./public")))
+
+	go func() {
+		m.log.Info().Msgf("Starting server, visit http://localhost:8000")
+		if err := http.ListenAndServe(":8000", nil); err != nil {
+			m.err <- fmt.Errorf("error listening on :8000: %w", err)
+		}
+	}()
+
+	return nil
+}
+
 func (m *Manager) Shutdown() {
-	m.started = false
 	m.log.Info().Msg("shuting down ...")
-	m.shutdownChannel <- true
-	m.log.Info().Msgf("waiting for go routine to stop ...")
-	m.waitGroup.Wait()
-	m.log.Info().Msgf("all go routine stopped")
-	close(m.shutdownChannel)
-	m.c.Shutdown()
+	ctx, cancel := context.WithTimeout(context.Background(), m.shutdownTimeout)
+	defer cancel()
+
+	m.node.Shutdown(ctx)
+
 	m.log.Info().Msgf("stopped")
 }
