@@ -7,8 +7,8 @@ replace github.com/jtbonhomme/pubsub => ../pubsub
 require (
 	github.com/centrifugal/centrifuge v0.29.3
 	github.com/centrifugal/centrifuge-go v0.10.0
-	github.com/google/uuid v1.3.0
 	github.com/jtbonhomme/pubsub v0.0.5
+	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/rs/zerolog v1.29.1
 )
 
@@ -19,6 +19,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/igm/sockjs-go/v3 v3.0.2 // indirect

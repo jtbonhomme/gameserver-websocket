@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -24,6 +25,7 @@ type Manager struct {
 	err             chan error
 	node            *centrifuge.Node
 	shutdownTimeout time.Duration
+	db              *sql.DB
 }
 
 func auth(h http.Handler) http.Handler {
@@ -43,7 +45,8 @@ func auth(h http.Handler) http.Handler {
 	})
 }
 
-func New(l *zerolog.Logger) *Manager {
+// New creates a new Manager instance.
+func New(l *zerolog.Logger, db *sql.DB) *Manager {
 	output := zerolog.ConsoleWriter{
 		Out:           os.Stderr,
 		TimeFormat:    time.RFC3339,
@@ -56,14 +59,16 @@ func New(l *zerolog.Logger) *Manager {
 		games:           []*game.Game{},
 		err:             make(chan error),
 		shutdownTimeout: defaultShutdownTimeout,
+		db:              db,
 	}
 }
 
-// Error -.
+// Error sends an error in the dedicated channel.
 func (m *Manager) Error() <-chan error {
 	return m.err
 }
 
+// Start starts the manager.
 func (m *Manager) Start() error {
 	m.log.Info().Msg("starting ...")
 
@@ -93,10 +98,7 @@ func (m *Manager) Start() error {
 			m.log.Info().Msgf("client %s (%s) disconnected", client.ID(), string(client.Info()))
 		})
 
-		client.OnRPC(func(e centrifuge.RPCEvent, c centrifuge.RPCCallback) {
-			m.log.Info().Msgf("client RPC: %s %s", e.Method, string(e.Data))
-			c(centrifuge.RPCReply{Data: []byte(`{"reply": "ok to ` + e.Method + `"}`)}, nil)
-		})
+		client.OnRPC(m.HandleRPC)
 	})
 
 	// Run node. This method does not block. See also node.Shutdown method
@@ -105,8 +107,7 @@ func (m *Manager) Start() error {
 		return fmt.Errorf("error running centrifuge node: %w", err)
 	}
 
-	// Now configure HTTP routes.
-
+	// Configure HTTP routes.
 	// Serve Websocket connections using WebsocketHandler.
 	wsHandler := centrifuge.NewWebsocketHandler(m.node, centrifuge.WebsocketConfig{})
 	http.Handle("/connection/websocket", auth(wsHandler))
@@ -120,6 +121,9 @@ func (m *Manager) Start() error {
 			m.err <- fmt.Errorf("error listening on :8000: %w", err)
 		}
 	}()
+
+	// Migrate sqlite tables
+	m.MigrateSchema()
 
 	return nil
 }

@@ -3,3 +3,4 @@ tmp
 coverage.lcov
 coverage.out
 .DS_Store
+sqlite-database.db
