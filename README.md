@@ -1,8 +1,62 @@
-# test-websocket
+# gameserver-websocket
 
-This repos tests Golang websockets and a simple in-memory pub/sub broker to share messages.
+This repos implements a game server in Golang.
+It uses websockets and a simple in-memory pub/sub broker to share messages with clients.
 
-## Game server
+## Usage
+
+### Install
+
+```sh
+make download
+```
+
+### Run server
+
+Run the game server with this command:
+
+```sh
+make server
+```
+
+### Run test client
+
+Run a test game client with this command:
+
+```sh
+make client
+```
+
+## Client Server protocol
+
+### Websocket
+
+The game server runs a pubsub broker over a websocket server.
+The default port is 8000.
+
+The clients connect to the server and send RPC commands.
+Each RPC command is made with a `method` and a payload.
+
+### Topics
+
+* `com.jtbonhomme.players`
+This topics is used for actions related to players actions (registrations, wall of fame, ...)
+
+* `com.jtbonhomme.game`
+This topics is used for actions related to game actions (crete or join game)
+Each time a game is created, a unique and dedicated topics is created and is identified with an unique identifier.
+
+### RPC Methods
+
+#### `register`
+
+This is 
+
+#### `game`
+
+
+
+## Game server Actions
 
 Here's the sequence of actions that includes the ability for the game server to host multiple games simultaneously, allowing players to create new games, join existing games, and record player scores for statistical purposes:
 
@@ -85,51 +139,7 @@ If desired, the clients can send a new game request to the server, indicating th
 Steps 4-13 are repeated to create and play a new game.
 With this updated sequence of actions, the game server can host multiple games simultaneously, allowing players to create new games, join existing games, and record player scores for statistical purposes at the end of each game.
 
+## Todo
 
-## Usage
-
-### Install
-
-```sh
-go mod download
-```
-
-### Run server
-
-```sh
-go run cmd/server/main.go
-
-   ____    __
-  / __/___/ /  ___
- / _// __/ _ \/ _ \
-/___/\__/_//_/\___/ v4.10.2
-High performance, minimalist Go web framework
-https://echo.labstack.com
-____________________________________O/_______
-                                    O\
-⇨ http server started on [::]:12345
-```
-
-### Open dashboard
-
-The dashboard has been copied from GoogleCloud tutorial: [Streaming Pub/Sub messages over WebSockets](https://cloud.google.com/pubsub/docs/streaming-cloud-pub-sub-messages-over-websockets).
-
-Open you browser to see dashboard `localhost:12345`
-
-![](not-connected.png)
-
-Click on the cab in the Dashcab title on top left corner.
-
-![](connected.png)
-
-### Run client
-
-Run the client to send a fake cab course.
-
-```sh
-go run cmd/client/main.go
-```
-
-Then check the dashboard.
-
-![](dashboard.png)
+* [ ] Configuration for port and allowed origin
+* [ ] plugin for RPC management

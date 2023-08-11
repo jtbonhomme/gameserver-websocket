@@ -1,39 +1,59 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/rs/zerolog"
+	_ "github.com/mattn/go-sqlite3" // Import go-sqlite3 library
 
-	"github.com/jtbonhomme/pubsub"
+	"github.com/rs/zerolog"
 
 	"github.com/jtbonhomme/gameserver-websocket/internal/manager"
 )
 
-const skipFrameCount = 3
+const sqliteDatabaseFilepath string = "sqlite-database.db"
 
 func main() {
+	var err error
+	var file *os.File
+
 	// Init logger
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	output := zerolog.ConsoleWriter{
-		Out:        os.Stderr,
-		TimeFormat: time.RFC3339,
+		Out:           os.Stderr,
+		TimeFormat:    time.RFC3339,
+		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[main] %s", i) },
 	}
 	logger := zerolog.New(output).With().Timestamp().Logger()
 
-	// 1. Server Setup
-	logger.Info().Msg("Server: start broker")
-	broker := pubsub.New(&logger)
-	broker.Start()
+	_, err = os.Stat(sqliteDatabaseFilepath)
+	if os.IsNotExist(err) {
+		logger.Info().Msg("creating sqlite-database.db...")
+		file, err = os.Create(sqliteDatabaseFilepath)
+		if err != nil {
+			logger.Panic().Msgf("error creating sqlite database: %s", err.Error())
+		}
+		file.Close()
+		logger.Info().Msg("sqlite-database.db created")
+	} else {
+		logger.Info().Msg("sqlite-database.db already exists")
+	}
+	sqliteDatabase, _ := sql.Open("sqlite3", "./sqlite-database.db")
+	defer sqliteDatabase.Close()
 
+	logger.Info().Msg("start manager")
+	mgr := manager.New(&logger, sqliteDatabase)
+	err = mgr.Start()
+	if err != nil {
+		logger.Panic().Msgf("manager start error: %s", err.Error())
+	}
+
+	// todo: use websocket to send logs: provide an io.Writer implementing object
 	// todo: manager websocket availability (because it starts in a goroutine)
-
-	logger.Info().Msg("Server: start manager")
-	mgr := manager.New(&logger)
-	mgr.Start()
 
 	// Waiting signal
 	interrupt := make(chan os.Signal, 1)
@@ -41,10 +61,12 @@ func main() {
 
 	select {
 	case s := <-interrupt:
-		logger.Info().Msg("signal: " + s.String())
+		logger.Info().Msg("received signal: " + s.String())
 		// Shutdown
-		broker.Shutdown()
+		logger.Info().Msg("start shutdown procedure")
 		mgr.Shutdown()
+	case err := <-mgr.Error():
+		logger.Err(err).Msg("manager error")
 	}
-	logger.Info().Msg("Exit")
+	logger.Info().Msg("exit")
 }

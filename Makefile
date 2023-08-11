@@ -65,3 +65,7 @@ server: ; $(info $(M) Running server program…) @ ### run server program.
 client: ; $(info $(M) Running client program…) @ ### run client program.
 	$(GO) run $(CLIENT_PKG)
 .PHONY: client
+
+download: ; $(info $(M) Downloading go dependencies…) @ ### downloads go dependencies.
+	$(GO) mod download
+.PHONY: download
