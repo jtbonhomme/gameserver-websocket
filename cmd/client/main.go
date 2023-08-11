@@ -12,8 +12,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const tsFormat string = "2006-01-02T15:04:05.0000-07:00"
-
 func newClient(log *zerolog.Logger) *centrifuge.Client {
 	wsURL := "ws://localhost:8000/connection/websocket"
 	c := centrifuge.NewJsonClient(wsURL, centrifuge.Config{
@@ -42,7 +40,7 @@ func newClient(log *zerolog.Logger) *centrifuge.Client {
 		go func() {
 			result, err := c.RPC(context.Background(), "method", []byte(`{"action":"eat"}`))
 			if err != nil {
-				log.Info().Msgf("%w", err)
+				log.Info().Msgf("%s", err.Error())
 				return
 			}
 			log.Printf("RPC result 2: %s", string(result.Data))
@@ -68,14 +66,14 @@ func main() {
 
 	err = c.Connect()
 	if err != nil {
-		log.Fatal().Msgf("connect error: %s", err.Error())
+		log.Panic().Msgf("connect error: %s", err.Error())
 	}
 
 	result, err := c.RPC(context.Background(), "method", []byte(`{"action":"drink"}`))
 	if err != nil {
-		log.Fatal().Msgf("rpc error: %s", err.Error())
-		return
+		log.Panic().Msgf("rpc error: %s", err.Error())
 	}
+
 	log.Printf("RPC result: %s", string(result.Data))
 
 	// Waiting signal
@@ -88,5 +86,6 @@ func main() {
 		// Shutdown
 		log.Info().Msg("start shutdown procedure")
 	}
+
 	log.Info().Msg("exit")
 }

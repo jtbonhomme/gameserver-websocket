@@ -103,13 +103,17 @@ func (m *Manager) Start() error {
 
 	// Run node. This method does not block. See also node.Shutdown method
 	// to finish application gracefully.
-	if err := m.node.Run(); err != nil {
+	err = m.node.Run()
+	if err != nil {
 		return fmt.Errorf("error running centrifuge node: %w", err)
 	}
 
 	// Configure HTTP routes.
 	// Serve Websocket connections using WebsocketHandler.
-	wsHandler := centrifuge.NewWebsocketHandler(m.node, centrifuge.WebsocketConfig{})
+	wsHandler := centrifuge.NewWebsocketHandler(m.node, centrifuge.WebsocketConfig{
+		ReadBufferSize: 1024,
+		CheckOrigin:    m.checkOrigin,
+	})
 	http.Handle("/connection/websocket", auth(wsHandler))
 
 	// The second route is for serving index.html file.
@@ -123,7 +127,10 @@ func (m *Manager) Start() error {
 	}()
 
 	// Migrate sqlite tables
-	m.MigrateSchema()
+	err = m.MigrateSchema()
+	if err != nil {
+		return fmt.Errorf("error migrating schema: %w", err)
+	}
 
 	return nil
 }
@@ -133,7 +140,15 @@ func (m *Manager) Shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), m.shutdownTimeout)
 	defer cancel()
 
-	m.node.Shutdown(ctx)
+	_ = m.node.Shutdown(ctx)
 
 	m.log.Info().Msgf("stopped")
+}
+
+func (m *Manager) checkOrigin(r *http.Request) bool {
+	originHeader := r.Header.Get("Origin")
+	return (originHeader == "http://localhost:4173") || // sveltekit dev
+		(originHeader == "http://localhost:5173") || // sveltekit preview
+		(originHeader == "") ||
+		(originHeader == "null")
 }

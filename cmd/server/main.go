@@ -19,6 +19,8 @@ const sqliteDatabaseFilepath string = "sqlite-database.db"
 
 func main() {
 	var err error
+	var file *os.File
+
 	// Init logger
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	output := zerolog.ConsoleWriter{
@@ -31,9 +33,9 @@ func main() {
 	_, err = os.Stat(sqliteDatabaseFilepath)
 	if os.IsNotExist(err) {
 		logger.Info().Msg("creating sqlite-database.db...")
-		file, err := os.Create(sqliteDatabaseFilepath)
+		file, err = os.Create(sqliteDatabaseFilepath)
 		if err != nil {
-			logger.Panic().Msgf("error creating sqlite database: %w", err)
+			logger.Panic().Msgf("error creating sqlite database: %s", err.Error())
 		}
 		file.Close()
 		logger.Info().Msg("sqlite-database.db created")
@@ -47,7 +49,7 @@ func main() {
 	mgr := manager.New(&logger, sqliteDatabase)
 	err = mgr.Start()
 	if err != nil {
-		logger.Panic().Msgf("manager start error: %w", err)
+		logger.Panic().Msgf("manager start error: %s", err.Error())
 	}
 
 	// todo: use websocket to send logs: provide an io.Writer implementing object
