@@ -27,7 +27,36 @@ Run a test game client with this command:
 make client
 ```
 
-## Game server
+## Client Server protocol
+
+### Websocket
+
+The game server runs a pubsub broker over a websocket server.
+The default port is 8000.
+
+The clients connect to the server and send RPC commands.
+Each RPC command is made with a `method` and a payload.
+
+### Topics
+
+* `com.jtbonhomme.players`
+This topics is used for actions related to players actions (registrations, wall of fame, ...)
+
+* `com.jtbonhomme.game`
+This topics is used for actions related to game actions (crete or join game)
+Each time a game is created, a unique and dedicated topics is created and is identified with an unique identifier.
+
+### RPC Methods
+
+#### `register`
+
+This is 
+
+#### `game`
+
+
+
+## Game server Actions
 
 Here's the sequence of actions that includes the ability for the game server to host multiple games simultaneously, allowing players to create new games, join existing games, and record player scores for statistical purposes:
 
@@ -110,3 +139,7 @@ If desired, the clients can send a new game request to the server, indicating th
 Steps 4-13 are repeated to create and play a new game.
 With this updated sequence of actions, the game server can host multiple games simultaneously, allowing players to create new games, join existing games, and record player scores for statistical purposes at the end of each game.
 
+## Todo
+
+* [ ] Configuration for port and allowed origin
+* [ ] plugin for RPC management

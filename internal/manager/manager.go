@@ -68,11 +68,18 @@ func (m *Manager) Error() <-chan error {
 	return m.err
 }
 
+func (m *Manager) handleLog(e centrifuge.LogEntry) {
+	m.log.Debug().Msgf("%s: %v", e.Message, e.Fields)
+}
+
 // Start starts the manager.
 func (m *Manager) Start() error {
 	m.log.Info().Msg("starting ...")
 
-	node, err := centrifuge.New(centrifuge.Config{})
+	node, err := centrifuge.New(centrifuge.Config{
+		LogLevel:   centrifuge.LogLevelDebug,
+		LogHandler: m.handleLog,
+	})
 	if err != nil {
 		return fmt.Errorf("error creating centrifuge node: %w", err)
 	}
