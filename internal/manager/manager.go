@@ -12,7 +12,6 @@ import (
 	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 	"github.com/jtbonhomme/pubsub"
 	"github.com/rs/zerolog"
-	"golang.org/x/net/websocket"
 )
 
 const (
@@ -21,7 +20,6 @@ const (
 
 type Manager struct {
 	log             *zerolog.Logger
-	conn            *websocket.Conn // Client websocket connection.
 	games           []*game.Game
 	player          []players.Player
 	started         bool
@@ -29,6 +27,7 @@ type Manager struct {
 	shutdownTimeout time.Duration
 	shutdownChannel chan struct{} // Channel used to stop manager.
 	waitGroup       *sync.WaitGroup
+	client          *pubsub.Client
 }
 
 func New(l *zerolog.Logger) *Manager {
@@ -54,20 +53,19 @@ func (m *Manager) Start() {
 
 	go func(shutdownChannel chan struct{}, wg *sync.WaitGroup) {
 		m.log.Info().Msg("Manager starting ...")
-		defer wg.Done()
-		c := pubsub.NewClient(m.log)
+		m.client = pubsub.NewClient(m.log, "server")
 		// connect to server websocket
 		origin := "http://localhost/"
 		url := "ws://localhost:12345/connect"
-		err = c.Dial(url, origin)
+		err = m.client.Dial(url, origin)
 		if err != nil {
 			m.err <- err
 		}
-		err = c.Register("com.jtbonhomme.pubsub.general")
+		err = m.client.Register("com.jtbonhomme.pubsub.general")
 		if err != nil {
 			m.err <- err
 		}
-		err = c.Register("com.jtbonhomme.pubsub.game")
+		err = m.client.Register("com.jtbonhomme.pubsub.game")
 		if err != nil {
 			m.err <- err
 		}
@@ -77,7 +75,10 @@ func (m *Manager) Start() {
 		for {
 			select {
 			case <-shutdownChannel:
-				m.log.Info().Msg("Shutdown manager goroutine")
+				m.log.Debug().Msg("shutdown manager websocket client")
+				m.client.Shutdown()
+				m.log.Debug().Msg("shutdown manager goroutine")
+				wg.Done()
 				return
 			default:
 				runtime.Gosched()
@@ -98,6 +99,9 @@ func (m *Manager) Shutdown() {
 
 	m.log.Info().Msg("Manager shuting down ...")
 	m.started = false
+	m.log.Debug().Msg("close shutdown channel ...")
 	close(m.shutdownChannel)
+	m.log.Debug().Msg("wait from waitgroups being all done ...")
 	m.waitGroup.Wait() // wait for all goroutines
+	m.log.Debug().Msg("manager is shut down")
 }

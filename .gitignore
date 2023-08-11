@@ -2,3 +2,5 @@ tmp
 .vscode
 coverage.lcov
 coverage.out
+.DS_Store
+*.db

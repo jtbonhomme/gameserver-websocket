@@ -54,7 +54,9 @@ func main() {
 	}
 	logger := zerolog.New(output).With().Timestamp().Logger()
 
-	c := pubsub.NewClient(&logger)
+	c := pubsub.NewClient(&logger, "go-client")
+	defer c.Shutdown()
+
 	// connect to server websocket
 	origin := "http://localhost/"
 	url := "ws://localhost:12345/connect"
@@ -83,7 +85,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	c.Publish("com.jtbonhomme.pubsub.game", payload)
+	err = c.Publish("com.jtbonhomme.pubsub.game", payload)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	c.ListenAndRead(receiveMessageHandler)
+	c.Read(receiveMessageHandler)
 }
