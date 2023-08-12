@@ -1,6 +1,8 @@
 package manager
 
 import (
+	"fmt"
+
 	"github.com/centrifugal/centrifuge"
 )
 
@@ -15,6 +17,8 @@ func (m *Manager) HandleRPC(e centrifuge.RPCEvent, c centrifuge.RPCCallback) {
 	case Register:
 		m.Register(e.Data, c)
 	default:
-		m.log.Error().Msgf("unsupported method %s", e.Method)
+		msg := fmt.Sprintf("unsupported method %s", e.Method)
+		m.log.Error().Msg(msg)
+		c(centrifuge.RPCReply{Data: []byte(`{"status": "ko", "reason":"` + msg + `"}`)}, nil)
 	}
 }

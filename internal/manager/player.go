@@ -20,6 +20,7 @@ func (m *Manager) ListAll(data []byte, c centrifuge.RPCCallback) {
 
 // Register handles new player registration.
 func (m *Manager) Register(data []byte, c centrifuge.RPCCallback) {
+	m.log.Debug().Msgf("[rpc] (player) register - %s", string(data))
 	c(centrifuge.RPCReply{Data: []byte(`{"status": "ok", "id":"` + `"}`)}, nil)
 }
 
