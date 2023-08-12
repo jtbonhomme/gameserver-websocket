@@ -1,9 +1,11 @@
-package manager
+package sqlite
 
 import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/jtbonhomme/gameserver-websocket/internal/models"
 )
 
 // Game represents a game.
@@ -11,15 +13,15 @@ type Game struct {
 	ID         int
 	MinPlayers int
 	MaxPlayers int
-	Players    []*Player
+	Players    []*models.Player
 	Started    bool
 	StartTime  time.Time
 	EndTime    time.Time
 }
 
 // CreateGame creates a new game with the specified minimum and maximum number of players.
-func (m *Manager) CreateGame(minPlayers, maxPlayers int) (*Game, error) {
-	result, err := m.db.Exec("INSERT INTO games (min_players, max_players) VALUES (?, ?)", minPlayers, maxPlayers)
+func (s *SQLite) CreateGame(minPlayers, maxPlayers int) (*Game, error) {
+	result, err := s.db.Exec("INSERT INTO games (min_players, max_players) VALUES (?, ?)", minPlayers, maxPlayers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create game: %v", err)
 	}
@@ -39,8 +41,8 @@ func (m *Manager) CreateGame(minPlayers, maxPlayers int) (*Game, error) {
 }
 
 // JoinGame allows a player to join a game.
-func (m *Manager) JoinGame(gameID, playerID int) error {
-	_, err := m.db.Exec("INSERT INTO game_players (game_id, player_id) VALUES (?, ?)", gameID, playerID)
+func (s *SQLite) JoinGame(gameID, playerID int) error {
+	_, err := s.db.Exec("INSERT INTO game_players (game_id, player_id) VALUES (?, ?)", gameID, playerID)
 	if err != nil {
 		return fmt.Errorf("failed to join game: %v", err)
 	}
@@ -49,8 +51,8 @@ func (m *Manager) JoinGame(gameID, playerID int) error {
 }
 
 // StartGame starts a game when the required number of players is reached.
-func (m *Manager) StartGame(gameID int) error {
-	_, err := m.db.Exec("UPDATE games SET started = true, start_time = NOW() WHERE id = ?", gameID)
+func (s *SQLite) StartGame(gameID int) error {
+	_, err := s.db.Exec("UPDATE games SET started = true, start_time = NOW() WHERE id = ?", gameID)
 	if err != nil {
 		return fmt.Errorf("failed to start game: %v", err)
 	}
@@ -59,8 +61,8 @@ func (m *Manager) StartGame(gameID int) error {
 }
 
 // RecordScore records the score for a player in a game.
-func (m *Manager) RecordScore(gameID, playerID, score int) error {
-	_, err := m.db.Exec("INSERT INTO scores (game_id, player_id, score) VALUES (?, ?, ?)", gameID, playerID, score)
+func (s *SQLite) RecordScore(gameID, playerID, score int) error {
+	_, err := s.db.Exec("INSERT INTO scores (game_id, player_id, score) VALUES (?, ?, ?)", gameID, playerID, score)
 	if err != nil {
 		return fmt.Errorf("failed to record score: %v", err)
 	}
@@ -76,12 +78,12 @@ type GameStats struct {
 }
 
 // GetGameStats retrieves the statistics for a game.
-func (m *Manager) GetGameStats(gameID int) (*GameStats, error) {
+func (s *SQLite) GetGameStats(gameID int) (*GameStats, error) {
 	var start time.Time
 	var end time.Time
 	var score int
 
-	err := m.db.QueryRow("SELECT start_time, end_time, SUM(score) FROM games JOIN scores ON games.id = scores.game_id WHERE games.id = ? GROUP BY games.id", gameID).Scan(&start, &end, &score)
+	err := s.db.QueryRow("SELECT start_time, end_time, SUM(score) FROM games JOIN scores ON games.id = scores.game_id WHERE games.id = ? GROUP BY games.id", gameID).Scan(&start, &end, &score)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("game not found")
@@ -99,11 +101,11 @@ func (m *Manager) GetGameStats(gameID int) (*GameStats, error) {
 }
 
 // HallOfFame represents the hall of fame of the best players.
-type HallOfFame []*Player
+type HallOfFame []*models.Player
 
 // GetHallOfFame retrieves the hall of fame of the best players.
-func (m *Manager) GetHallOfFame(limit int) (HallOfFame, error) {
-	rows, err := m.db.Query("SELECT players.id, players.name, SUM(scores.score) AS total_score FROM players JOIN scores ON players.id = scores.player_id GROUP BY players.id ORDER BY total_score DESC LIMIT ?", limit)
+func (s *SQLite) GetHallOfFame(limit int) (HallOfFame, error) {
+	rows, err := s.db.Query("SELECT players.id, players.name, SUM(scores.score) AS total_score FROM players JOIN scores ON players.id = scores.player_id GROUP BY players.id ORDER BY total_score DESC LIMIT ?", limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get hall of fame: %v", err)
 	}
@@ -112,7 +114,7 @@ func (m *Manager) GetHallOfFame(limit int) (HallOfFame, error) {
 	var hallOfFame HallOfFame
 
 	for rows.Next() {
-		player := &Player{}
+		player := &models.Player{}
 		err := rows.Scan(&player.ID, &player.Name, &player.Score)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan hall of fame row: %v", err)

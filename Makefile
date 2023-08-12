@@ -10,10 +10,13 @@ PROJECT_NAME        := gameserver-websocket
 PKG_ORG             := github.com/jtbonhomme/$(PROJECT_NAME)
 SERVER_BINARY_NAME  := server
 CLIENT_BINARY_NAME  := client
+REPL_BINARY_NAME    := repl
 SERVER_CMD          := cmd/$(SERVER_BINARY_NAME)
 CLIENT_CMD          := cmd/$(CLIENT_BINARY_NAME)
+REPL_CMD            := cmd/$(REPL_BINARY_NAME)
 SERVER_PKG 		    := $(PKG_ORG)/$(SERVER_CMD)
 CLIENT_PKG 		    := $(PKG_ORG)/$(CLIENT_CMD)
+REPL_PKG 		    := $(PKG_ORG)/$(REPL_CMD)
 #PKG_LIST 	        := $(shell go list ${PKG}/...)
 GO_FILES 	        := $(shell find . -name '*.go' -not -path "./vendor/*" | grep -v _test.go)
 
@@ -65,6 +68,10 @@ server: ; $(info $(M) Running server program…) @ ### run server program.
 client: ; $(info $(M) Running client program…) @ ### run client program.
 	$(GO) run $(CLIENT_PKG)
 .PHONY: client
+
+repl: ; $(info $(M) Running repl program…) @ ### run repl program.
+	$(GO) run $(REPL_PKG)
+.PHONY: repl
 
 download: ; $(info $(M) Downloading go dependencies…) @ ### downloads go dependencies.
 	$(GO) mod download

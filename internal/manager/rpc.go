@@ -8,6 +8,7 @@ const (
 	Register string = "register"
 )
 
+// HandleRPC execute remote procedure call defined by the RPCEvent, then call the provided callback.
 func (m *Manager) HandleRPC(e centrifuge.RPCEvent, c centrifuge.RPCCallback) {
 	m.log.Info().Msgf("client RPC: %s %s", e.Method, string(e.Data))
 	switch e.Method {
@@ -16,9 +17,4 @@ func (m *Manager) HandleRPC(e centrifuge.RPCEvent, c centrifuge.RPCCallback) {
 	default:
 		m.log.Error().Msgf("unsupported method %s", e.Method)
 	}
-	c(centrifuge.RPCReply{Data: []byte(`{"reply": "ok to ` + e.Method + `"}`)}, nil)
-}
-
-func (m *Manager) Register(data []byte, c centrifuge.RPCCallback) {
-	c(centrifuge.RPCReply{Data: []byte(`{"reply": "client registered"}`)}, nil)
 }

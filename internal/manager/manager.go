@@ -2,14 +2,13 @@ package manager
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/jtbonhomme/gameserver-websocket/internal/game"
-	"github.com/jtbonhomme/gameserver-websocket/internal/players"
+	"github.com/jtbonhomme/gameserver-websocket/internal/storage"
 
 	"github.com/centrifugal/centrifuge"
 	"github.com/rs/zerolog"
@@ -20,12 +19,11 @@ const defaultShutdownTimeout = 3 * time.Second
 type Manager struct {
 	log             *zerolog.Logger
 	games           []*game.Game
-	player          []players.Player
 	started         bool
 	err             chan error
 	node            *centrifuge.Node
 	shutdownTimeout time.Duration
-	db              *sql.DB
+	store           storage.Storage
 }
 
 func auth(h http.Handler) http.Handler {
@@ -46,7 +44,7 @@ func auth(h http.Handler) http.Handler {
 }
 
 // New creates a new Manager instance.
-func New(l *zerolog.Logger, db *sql.DB) *Manager {
+func New(l *zerolog.Logger, s storage.Storage) *Manager {
 	output := zerolog.ConsoleWriter{
 		Out:           os.Stderr,
 		TimeFormat:    time.RFC3339,
@@ -59,7 +57,7 @@ func New(l *zerolog.Logger, db *sql.DB) *Manager {
 		games:           []*game.Game{},
 		err:             make(chan error),
 		shutdownTimeout: defaultShutdownTimeout,
-		db:              db,
+		store:           s,
 	}
 }
 
@@ -133,12 +131,6 @@ func (m *Manager) Start() error {
 		}
 	}()
 
-	// Migrate sqlite tables
-	err = m.MigrateSchema()
-	if err != nil {
-		return fmt.Errorf("error migrating schema: %w", err)
-	}
-
 	return nil
 }
 
@@ -157,5 +149,6 @@ func (m *Manager) checkOrigin(r *http.Request) bool {
 	return (originHeader == "http://localhost:4173") || // sveltekit dev
 		(originHeader == "http://localhost:5173") || // sveltekit preview
 		(originHeader == "") ||
-		(originHeader == "null")
+		(originHeader == "null") ||
+		(originHeader == "https://skyjo.jtbonhomme.fr")
 }

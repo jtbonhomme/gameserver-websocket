@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"os/signal"
@@ -13,13 +12,11 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/jtbonhomme/gameserver-websocket/internal/manager"
+	"github.com/jtbonhomme/gameserver-websocket/internal/storage/memory"
 )
-
-const sqliteDatabaseFilepath string = "sqlite-database.db"
 
 func main() {
 	var err error
-	var file *os.File
 
 	// Init logger
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -30,23 +27,9 @@ func main() {
 	}
 	logger := zerolog.New(output).With().Timestamp().Logger()
 
-	_, err = os.Stat(sqliteDatabaseFilepath)
-	if os.IsNotExist(err) {
-		logger.Info().Msg("creating sqlite-database.db...")
-		file, err = os.Create(sqliteDatabaseFilepath)
-		if err != nil {
-			logger.Panic().Msgf("error creating sqlite database: %s", err.Error())
-		}
-		file.Close()
-		logger.Info().Msg("sqlite-database.db created")
-	} else {
-		logger.Info().Msg("sqlite-database.db already exists")
-	}
-	sqliteDatabase, _ := sql.Open("sqlite3", "./sqlite-database.db")
-	defer sqliteDatabase.Close()
-
+	m := memory.New()
 	logger.Info().Msg("start manager")
-	mgr := manager.New(&logger, sqliteDatabase)
+	mgr := manager.New(&logger, m)
 	err = mgr.Start()
 	if err != nil {
 		logger.Panic().Msgf("manager start error: %s", err.Error())
