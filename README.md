@@ -48,9 +48,9 @@ Each time a game is created, a unique and dedicated topics is created and is ide
 
 ### RPC Methods
 
-#### `register`
-
-This is 
+* `register`: handles new player registration
+* `unregister`: removes a player from registry
+* `listAll`: returns the list of all players
 
 #### `game`
 

@@ -19,7 +19,6 @@ const defaultShutdownTimeout = 3 * time.Second
 type Manager struct {
 	log             *zerolog.Logger
 	games           []*game.Game
-	started         bool
 	err             chan error
 	node            *centrifuge.Node
 	shutdownTimeout time.Duration
