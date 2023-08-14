@@ -5,9 +5,8 @@ import (
 )
 
 // Player represents a game player.
-// todo: ID should be a UUID
 type Player struct {
-	ID    uuid.UUID
-	Name  string
-	Score int
+	ID    uuid.UUID `json:"id"`
+	Name  string    `json:"name"`
+	Score int       `json:"score"`
 }

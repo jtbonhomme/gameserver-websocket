@@ -27,7 +27,7 @@ func main() {
 	}
 	logger := zerolog.New(output).With().Timestamp().Logger()
 
-	m := memory.New()
+	m := memory.New(&logger)
 	logger.Info().Msg("start manager")
 	mgr := manager.New(&logger, m)
 	err = mgr.Start()

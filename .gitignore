@@ -6,3 +6,4 @@ coverage.out
 sqlite-database.db
 server
 client
+cover.*

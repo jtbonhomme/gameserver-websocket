@@ -6,6 +6,7 @@ import (
 
 	"github.com/centrifugal/centrifuge"
 	"github.com/google/uuid"
+	"github.com/jtbonhomme/gameserver-websocket/internal/models"
 )
 
 const (
@@ -13,37 +14,34 @@ const (
 	KO string = "ko"
 )
 
-// Player represents a game player.
-// todo: ID should be a UUID
-type Player struct {
-	ID    uuid.UUID `json:"id"`
-	Name  string    `json:"name"`
-	Score int       `json:"score"`
-}
-
 // ListAll returns the list of all players.
 func (m *Manager) ListAll(data []byte, c centrifuge.RPCCallback) {
-	players := m.store.ListAll()
-	m.log.Debug().Msgf("[rpc] (player) list all - players %v", players)
+	var status, msg string
 
-	result := fmt.Sprintf(`{"status": %q, "players": [`, OK)
-	for i, player := range players {
-		result += fmt.Sprintf(`{"name": %q, "score": %d}`, player.Name, player.Score)
-		if i < len(players)-1 {
-			result += ","
-		}
+	players := m.store.ListAll()
+
+	for i, _ := range players {
+		players[i].ID = uuid.Nil
 	}
-	result += `]}`
-	c(centrifuge.RPCReply{Data: []byte(result)}, nil)
+
+	b, err := json.Marshal(players)
+	if err != nil {
+		status = KO
+		msg = fmt.Sprintf("unable to marshal data %v: %s", players, err.Error())
+		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result":%q}`, status, msg))}, nil)
+		return
+	}
+
+	status = OK
+	msg = string(b)
+	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result":%q}`, status, msg))}, nil)
 }
 
 // Register handles new player registration.
 func (m *Manager) Register(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 
-	m.log.Debug().Msgf("[rpc] (player) register name %s", string(data))
-	id := uuid.New()
-	var player Player
+	var player models.Player
 	err := json.Unmarshal(data, &player)
 	if err != nil {
 		status = KO
@@ -52,19 +50,18 @@ func (m *Manager) Register(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	player.ID = id
-	b, err := json.Marshal(player)
+	registeredPlayer, err := m.store.Register(player.ID.String(), player.Name)
 	if err != nil {
 		status = KO
-		msg = fmt.Sprintf("unable to marshal data %v: %s", player, err.Error())
+		msg = fmt.Sprintf("unable to register player %v: %s", player, err.Error())
 		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result":%q}`, status, msg))}, nil)
 		return
 	}
 
-	_, err = m.store.Register(id, player.Name)
+	b, err := json.Marshal(registeredPlayer)
 	if err != nil {
 		status = KO
-		msg = fmt.Sprintf("unable to register player %v: %s", player, err.Error())
+		msg = fmt.Sprintf("unable to marshal data %v: %s", player, err.Error())
 		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result":%q}`, status, msg))}, nil)
 		return
 	}
@@ -78,9 +75,8 @@ func (m *Manager) Register(data []byte, c centrifuge.RPCCallback) {
 // Unregister removes a player from registry.
 func (m *Manager) Unregister(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
-	m.log.Debug().Msgf("[rpc] (player) unregister - player id %s", string(data))
 
-	var player Player
+	var player models.Player
 	err := json.Unmarshal(data, &player)
 	if err != nil {
 		status = KO
@@ -89,7 +85,7 @@ func (m *Manager) Unregister(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	err = m.store.Unregister(player.ID)
+	err = m.store.Unregister(player.ID.String())
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to unregister player %v: %s", player, err.Error())
@@ -98,7 +94,7 @@ func (m *Manager) Unregister(data []byte, c centrifuge.RPCCallback) {
 	}
 
 	status = OK
-	msg = fmt.Sprintf("unregistered %s (%s)", player.Name, player.ID)
-	m.log.Debug().Msgf("[rpc] (player) unregistered: %s", msg)
+	msg = fmt.Sprintf("unregistered: %s (%s)", player.Name, player.ID.String())
+	m.log.Debug().Msgf("[rpc] player %s", msg)
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result":%q}`, status, msg))}, nil)
 }
