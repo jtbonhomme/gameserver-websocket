@@ -31,7 +31,6 @@ func (m *Manager) ListPlayers(data []byte, c centrifuge.RPCCallback) {
 
 	status = OK
 	msg = string(b)
-	fmt.Printf("******** players: %s\n", msg)
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result":%q}`, status, msg))}, nil)
 }
 

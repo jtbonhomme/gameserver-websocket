@@ -54,7 +54,7 @@ func (m *Memory) StartGame(id string) error {
 	}
 
 	players := game.Players
-	if len(players) < game.MinPlayers {
+	if game.MinPlayers != 0 && len(players) < game.MinPlayers {
 		return fmt.Errorf("min player number %d not reached yet", game.MinPlayers)
 	}
 
@@ -130,7 +130,7 @@ func (m *Memory) JoinGame(idGame, idPlayer string) error {
 		return fmt.Errorf("player id %s already joined the game", idPlayer)
 	}
 
-	if len(players) == game.MaxPlayers {
+	if game.MaxPlayers != 0 && len(players) == game.MaxPlayers {
 		return fmt.Errorf("max player number %d already already reached", game.MaxPlayers)
 	}
 

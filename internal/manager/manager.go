@@ -14,7 +14,10 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const defaultShutdownTimeout = 3 * time.Second
+const (
+	defaultShutdownTimeout        = 3 * time.Second
+	ServerPublishChannel   string = "com.jtbonhomme.server"
+)
 
 type Manager struct {
 	log             *zerolog.Logger
@@ -48,7 +51,7 @@ func New(l *zerolog.Logger, s storage.Storage) *Manager {
 	output := zerolog.ConsoleWriter{
 		Out:           os.Stderr,
 		TimeFormat:    time.RFC3339,
-		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[manager] %s", i) },
+		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[manager] %s", i) },
 	}
 	logger := l.Output(output)
 

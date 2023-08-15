@@ -64,6 +64,11 @@ func (m *Manager) CreateGame(data []byte, c centrifuge.RPCCallback) {
 	status = OK
 	msg = string(b)
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
+
+	_, err = m.node.Publish(ServerPublishChannel, []byte(`{"message": "gameCreated", "data": "`+createdGame.ID.String()+`"}`))
+	if err != nil {
+		m.log.Error().Msgf("manager publication error: %s", err.Error())
+	}
 }
 
 // StartGame starts the game with a given ID.
