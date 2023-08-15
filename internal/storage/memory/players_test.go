@@ -21,19 +21,24 @@ func TestMemoryPlayer(t *testing.T) {
 	logger := zerolog.New(output).With().Timestamp().Logger()
 
 	// concrete memory test storage implementation
-	s := memory.New(&logger)
+	mem := memory.New(&logger)
 
 	// first time player registration
-	player1, err := s.Register("", "name1")
+	player1, err := mem.RegisterPlayer("", "name1")
 	if err != nil {
 		t.Errorf("error while registering name1: %s", err.Error())
 	}
-	if player1.ID.String() == "" {
+
+	if player1 == nil {
+		t.Fatal("Expected player1 to be created, got nil")
+	}
+
+	if player1 != nil && player1.ID.String() == "" {
 		t.Errorf("error, expected new UUID created for player name1")
 	}
 	id := player1.ID.String()
 
-	player2, err := s.Register("", "name2")
+	player2, err := mem.RegisterPlayer("", "name2")
 	if err != nil {
 		t.Errorf("error while registering name2: %s", err.Error())
 	}
@@ -42,7 +47,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	// register already recorded player (name1)
-	player3, err := s.Register(id, "name1")
+	player3, err := mem.RegisterPlayer(id, "name1")
 	if err != nil {
 		t.Errorf("error while registering name1: %s", err.Error())
 	}
@@ -53,29 +58,29 @@ func TestMemoryPlayer(t *testing.T) {
 		t.Errorf("error, expected new UUID created for player name1")
 	}
 
-	players := s.ListAll()
+	players := mem.ListPlayers()
 	if len(players) != 2 {
 		t.Errorf("expected 2 registered players and got %d", len(players))
 	}
 
 	// unregister unknown player
-	err = s.Unregister("fake-id")
+	err = mem.UnregisterPlayer("fake-id")
 	if err == nil {
 		t.Errorf("expected error while registering unknown player but got nil")
 	}
 
-	players = s.ListAll()
+	players = mem.ListPlayers()
 	if len(players) != 2 {
 		t.Errorf("expected 2 registered players and got %d", len(players))
 	}
 
 	// unregister already recorded player (name1)
-	err = s.Unregister(id)
+	err = mem.UnregisterPlayer(id)
 	if err != nil {
 		t.Errorf("error while registering name1: %s", err.Error())
 	}
 
-	players = s.ListAll()
+	players = mem.ListPlayers()
 	if len(players) != 1 {
 		t.Errorf("expected 1 registered players and got %d", len(players))
 	}

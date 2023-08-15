@@ -42,7 +42,7 @@ func TestMemoryPlayer(t *testing.T) {
 
 	// first time player registration
 	go func() {
-		m.Register([]byte(`{"name":"name1"}`), func(r centrifuge.RPCReply, e error) {
+		m.RegisterPlayer([]byte(`{"name":"name1"}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
@@ -71,7 +71,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	go func() {
-		m.Register([]byte(`{"name":"name2"}`), func(r centrifuge.RPCReply, e error) {
+		m.RegisterPlayer([]byte(`{"name":"name2"}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
@@ -102,7 +102,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	go func() {
-		m.Register([]byte(`{"id": "`+id+`", "name":"name1"}`), func(r centrifuge.RPCReply, e error) {
+		m.RegisterPlayer([]byte(`{"id": "`+id+`", "name":"name1"}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
@@ -134,7 +134,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	go func() {
-		m.ListAll([]byte(`{}`), func(r centrifuge.RPCReply, e error) {
+		m.ListPlayers([]byte(`{}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
@@ -168,7 +168,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	go func() {
-		m.Unregister([]byte(`{"id": "`+id+`"}`), func(r centrifuge.RPCReply, e error) {
+		m.UnregisterPlayer([]byte(`{"id": "`+id+`"}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
@@ -186,7 +186,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	go func() {
-		m.ListAll([]byte(`{}`), func(r centrifuge.RPCReply, e error) {
+		m.ListPlayers([]byte(`{}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})

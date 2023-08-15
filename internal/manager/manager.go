@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/jtbonhomme/gameserver-websocket/internal/game"
+	"github.com/jtbonhomme/gameserver-websocket/internal/models"
 	"github.com/jtbonhomme/gameserver-websocket/internal/storage"
 
 	"github.com/centrifugal/centrifuge"
@@ -18,7 +18,8 @@ const defaultShutdownTimeout = 3 * time.Second
 
 type Manager struct {
 	log             *zerolog.Logger
-	games           []*game.Game
+	games           []*models.Game
+	players         []*models.Player
 	err             chan error
 	node            *centrifuge.Node
 	shutdownTimeout time.Duration
@@ -53,7 +54,8 @@ func New(l *zerolog.Logger, s storage.Storage) *Manager {
 
 	return &Manager{
 		log:             &logger,
-		games:           []*game.Game{},
+		games:           []*models.Game{},
+		players:         []*models.Player{},
 		err:             make(chan error),
 		shutdownTimeout: defaultShutdownTimeout,
 		store:           s,

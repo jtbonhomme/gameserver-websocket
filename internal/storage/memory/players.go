@@ -4,28 +4,12 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 
 	"github.com/jtbonhomme/gameserver-websocket/internal/models"
 )
 
-type Memory struct {
-	log     *zerolog.Logger
-	players map[string]*models.Player
-}
-
-// New creates a new Memory object.
-func New(l *zerolog.Logger) *Memory {
-	mem := &Memory{
-		log:     l,
-		players: make(map[string]*models.Player),
-	}
-
-	return mem
-}
-
-// ListAll returns all registered players (with ID anonymized).
-func (m *Memory) ListAll() []*models.Player {
+// ListPlayers returns all registered players (with ID anonymized).
+func (m *Memory) ListPlayers() []*models.Player {
 	players := []*models.Player{}
 	for _, value := range m.players {
 		players = append(players, value)
@@ -33,8 +17,8 @@ func (m *Memory) ListAll() []*models.Player {
 	return players
 }
 
-// Register records a player with the given name.
-func (m *Memory) Register(id, name string) (*models.Player, error) {
+// RegisterPlayer records a player with the given name.
+func (m *Memory) RegisterPlayer(id, name string) (*models.Player, error) {
 	// if provided id matches a registered player
 	if id != uuid.Nil.String() {
 		player, ok := m.players[id]
@@ -57,8 +41,8 @@ func (m *Memory) Register(id, name string) (*models.Player, error) {
 	return player, nil
 }
 
-// Unregister removes the player with a given ID.
-func (m *Memory) Unregister(id string) error {
+// UnregisterPlayer removes the player with a given ID.
+func (m *Memory) UnregisterPlayer(id string) error {
 	_, ok := m.players[id]
 	if !ok {
 		return fmt.Errorf("unknown player ID: %s", id)

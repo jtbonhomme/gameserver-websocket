@@ -14,11 +14,11 @@ const (
 	KO string = "ko"
 )
 
-// ListAll returns the list of all players.
-func (m *Manager) ListAll(data []byte, c centrifuge.RPCCallback) {
+// ListPlayers returns the list of all players.
+func (m *Manager) ListPlayers(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 
-	players := m.store.ListAll()
+	players := m.store.ListPlayers()
 
 	for i, _ := range players {
 		players[i].ID = uuid.Nil
@@ -38,7 +38,7 @@ func (m *Manager) ListAll(data []byte, c centrifuge.RPCCallback) {
 }
 
 // Register handles new player registration.
-func (m *Manager) Register(data []byte, c centrifuge.RPCCallback) {
+func (m *Manager) RegisterPlayer(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 
 	var player models.Player
@@ -50,7 +50,7 @@ func (m *Manager) Register(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	registeredPlayer, err := m.store.Register(player.ID.String(), player.Name)
+	registeredPlayer, err := m.store.RegisterPlayer(player.ID.String(), player.Name)
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to register player %v: %s", player, err.Error())
@@ -73,7 +73,7 @@ func (m *Manager) Register(data []byte, c centrifuge.RPCCallback) {
 }
 
 // Unregister removes a player from registry.
-func (m *Manager) Unregister(data []byte, c centrifuge.RPCCallback) {
+func (m *Manager) UnregisterPlayer(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 
 	var player models.Player
@@ -85,7 +85,7 @@ func (m *Manager) Unregister(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	err = m.store.Unregister(player.ID.String())
+	err = m.store.UnregisterPlayer(player.ID.String())
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to unregister player %v: %s", player, err.Error())
