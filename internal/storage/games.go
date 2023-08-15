@@ -11,5 +11,5 @@ type Games interface {
 	StartGame(string) error                    // StartGame starts the game with a given ID.
 	StopGame(string) error                     // StopGame stops the game with a given ID.
 	IsGameStarted(string) (bool, error)        // IsGameStarted returns true is game with given ID is started.
-	JoinGame(string, string) error             // JoinGame joins a player to a game.
+	JoinGame(string, string) error             // JoinGame adds a player to a game.
 }

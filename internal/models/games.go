@@ -7,10 +7,11 @@ import (
 )
 
 type Game struct {
-	ID                     uuid.UUID `json:"id"`
-	Started                bool
-	Players                []string
-	MinPlayers, MaxPlayers int
-	StartTime              time.Time
-	EndTime                time.Time
+	ID         uuid.UUID `json:"id"`
+	Started    bool      `json:"started"`
+	Players    []string  `json:"players"`
+	MinPlayers int       `json:"minPlayers"`
+	MaxPlayers int       `json:"maxPlayers"`
+	StartTime  time.Time `json:"startTime"`
+	EndTime    time.Time `json:"endTime"`
 }

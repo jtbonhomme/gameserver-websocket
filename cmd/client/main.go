@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -15,8 +14,7 @@ import (
 func newClient(log *zerolog.Logger) *centrifuge.Client {
 	wsURL := "ws://localhost:8000/connection/websocket"
 	c := centrifuge.NewJsonClient(wsURL, centrifuge.Config{
-		Name:    "centrifuge-go",
-		Data:    []byte(`{"name":"totoro"}`),
+		Name:    "listening-go-client",
 		Version: "0.0.1",
 	})
 
@@ -34,17 +32,6 @@ func newClient(log *zerolog.Logger) *centrifuge.Client {
 	})
 	c.OnMessage(func(e centrifuge.MessageEvent) {
 		log.Info().Msgf("Message received from server %s", string(e.Data))
-
-		// When issue blocking requests from inside event handler we must use
-		// a goroutine. Otherwise, connection read loop will be blocked.
-		go func() {
-			result, err := c.RPC(context.Background(), "method", []byte(`{"action":"eat"}`))
-			if err != nil {
-				log.Info().Msgf("%s", err.Error())
-				return
-			}
-			log.Printf("RPC result 2: %s", string(result.Data))
-		}()
 	})
 	return c
 }
@@ -57,7 +44,7 @@ func main() {
 	output := zerolog.ConsoleWriter{
 		Out:           os.Stderr,
 		TimeFormat:    time.RFC3339,
-		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[client] %s", i) },
+		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[client] %s", i) },
 	}
 	log := zerolog.New(output).With().Timestamp().Logger()
 	log.Info().Msg("start client")
@@ -68,13 +55,6 @@ func main() {
 	if err != nil {
 		log.Panic().Msgf("connect error: %s", err.Error())
 	}
-
-	result, err := c.RPC(context.Background(), "method", []byte(`{"action":"drink"}`))
-	if err != nil {
-		log.Panic().Msgf("rpc error: %s", err.Error())
-	}
-
-	log.Printf("RPC result: %s", string(result.Data))
 
 	// Waiting signal
 	interrupt := make(chan os.Signal, 1)

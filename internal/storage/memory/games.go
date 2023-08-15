@@ -2,6 +2,7 @@ package memory
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -58,6 +59,7 @@ func (m *Memory) StartGame(id string) error {
 	}
 
 	game.Started = true
+	game.StartTime = time.Now()
 	m.games[id] = game
 
 	return nil
@@ -79,6 +81,7 @@ func (m *Memory) StopGame(id string) error {
 	}
 
 	game.Started = false
+	game.EndTime = time.Now()
 	m.games[id] = game
 
 	return nil
@@ -98,7 +101,7 @@ func (m *Memory) IsGameStarted(id string) (bool, error) {
 	return game.Started, nil
 }
 
-// JoinGame joins a player to a game.
+// JoinGame adds a player to a game.
 func (m *Memory) JoinGame(idGame, idPlayer string) error {
 	if idGame == uuid.Nil.String() {
 		return fmt.Errorf("nil game id")
