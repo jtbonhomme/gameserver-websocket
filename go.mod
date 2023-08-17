@@ -28,6 +28,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gookit/color v1.5.3 // indirect
+	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/igm/sockjs-go/v3 v3.0.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect

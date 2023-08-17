@@ -6,9 +6,9 @@ import (
 
 // Player represents a game player.
 type Player struct {
-	ID    uuid.UUID
-	Name  string
-	Score int
+	ID    uuid.UUID `json:"id"`
+	Name  string    `json:"name"`
+	Score int       `json:"score"`
 }
 
 func New(name string) *Player {

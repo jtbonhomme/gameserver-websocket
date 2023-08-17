@@ -7,21 +7,28 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/goombaio/namegenerator"
+	"github.com/rs/zerolog"
+
 	"github.com/jtbonhomme/gameserver-websocket/internal/state"
 	"github.com/jtbonhomme/gameserver-websocket/internal/utils"
-	"github.com/rs/zerolog"
+)
+
+const (
+	GameTopicPrefix string = "game-"
 )
 
 type Game struct {
 	log        *zerolog.Logger
-	id         uuid.UUID
+	ID         uuid.UUID `json:"id"`
 	started    bool
 	players    []string
-	minplayers int
-	maxplayers int
+	MinPlayers int `json:"minPlayers"`
+	MaxPlayers int `json:"maxPlayers"`
 	startTime  time.Time
 	endTime    time.Time
 	state      *state.State
+	TopicName  string `json:"topicName"`
 }
 
 // New creates a new game object with a minimum number of players
@@ -29,7 +36,7 @@ type Game struct {
 // number of players who can join the game.
 func New(l *zerolog.Logger, min, max int) *Game {
 	gameID := uuid.New()
-
+	nameGenerator := namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 	output := zerolog.ConsoleWriter{
 		Out:           os.Stderr,
 		TimeFormat:    time.RFC3339,
@@ -39,12 +46,13 @@ func New(l *zerolog.Logger, min, max int) *Game {
 
 	g := Game{
 		log:        &log,
-		id:         gameID,
-		minplayers: min,
-		maxplayers: max,
+		ID:         gameID,
+		MinPlayers: min,
+		MaxPlayers: max,
 		started:    false,
 		players:    []string{},
 		state:      state.New(l),
+		TopicName:  GameTopicPrefix + nameGenerator.Generate(),
 	}
 
 	return &g
@@ -59,8 +67,8 @@ func (game *Game) Start() error {
 	}
 
 	players := game.players
-	if game.minplayers != 0 && len(players) < game.minplayers {
-		return fmt.Errorf("min player number %d not reached yet", game.minplayers)
+	if game.MinPlayers != 0 && len(players) < game.MinPlayers {
+		return fmt.Errorf("min player number %d not reached yet", game.MinPlayers)
 	}
 
 	game.started = true
@@ -88,11 +96,6 @@ func (game *Game) IsStarted() bool {
 	return game.started
 }
 
-// ID returns game's ID.
-func (game *Game) ID() uuid.UUID {
-	return game.id
-}
-
 // AddPlayer register a player to the game. If the player is already registered,
 // the method does nothing. If the maximum number of players is alreary
 // reached, of if the game is already started, the methods returns an error.
@@ -101,7 +104,7 @@ func (game *Game) AddPlayer(id string) error {
 		return errors.New("game alreay started")
 	}
 
-	if len(game.players) == game.maxplayers {
+	if len(game.players) == game.MaxPlayers {
 		return errors.New("maximum number of players alreay reached")
 	}
 

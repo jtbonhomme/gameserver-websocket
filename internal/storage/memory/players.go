@@ -43,3 +43,16 @@ func (m *Memory) UnregisterPlayer(id string) error {
 	delete(m.players, id)
 	return nil
 }
+
+// NameByID returns a player name from its ID.
+func (m *Memory) NameByID(id string) (string, error) {
+	// if provided id matches a registered player
+	if id != uuid.Nil.String() {
+		player, ok := m.players[id]
+		if ok {
+			return player.Name, nil
+		}
+	}
+
+	return "", fmt.Errorf("unregisterd player id: %s", id)
+}

@@ -148,8 +148,7 @@ func TestGame_ID(t *testing.T) {
 
 	game := games.New(&logger, 2, 4)
 
-	id := game.ID()
-	if id == uuid.Nil {
+	if game.ID == uuid.Nil {
 		t.Error("Expected non-nil game ID")
 	}
 }

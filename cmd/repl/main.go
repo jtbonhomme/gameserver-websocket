@@ -28,29 +28,29 @@ func newClient(log *zerolog.Logger, wg *sync.WaitGroup) *centrifuge.Client {
 	c.OnConnected(func(_ centrifuge.ConnectedEvent) {
 		log.Info().Msg("Connected")
 
-		subServer, err := c.NewSubscription("com.jtbonhomme.server")
+		subServer, err := c.NewSubscription("server-general")
 		if err != nil {
 			log.Error().Msgf("subscription creation error: %s", err.Error())
 		}
 
 		subServer.OnJoin(func(e centrifuge.JoinEvent) {
-			log.Info().Msgf("[com.jtbonhomme.server] join event: %s", e.ClientInfo.Client)
+			log.Info().Msgf("[server-general] join event: %s", e.ClientInfo.Client)
 		})
 
 		subServer.OnError(func(e centrifuge.SubscriptionErrorEvent) {
-			log.Info().Msgf("[com.jtbonhomme.server] subscription error event: %s", e.Error.Error())
+			log.Info().Msgf("[server-general] subscription error event: %s", e.Error.Error())
 		})
 
 		subServer.OnPublication(func(e centrifuge.PublicationEvent) {
-			log.Info().Msgf("[com.jtbonhomme.server] publication event: %s", string(e.Data))
+			log.Info().Msgf("[server-general] publication event: %s", string(e.Data))
 		})
 
 		subServer.OnSubscribing(func(e centrifuge.SubscribingEvent) {
-			log.Info().Msgf("[com.jtbonhomme.server] subscribing event: %s", e.Reason)
+			log.Info().Msgf("[server-general] subscribing event: %s", e.Reason)
 		})
 
 		subServer.OnSubscribed(func(e centrifuge.SubscribedEvent) {
-			log.Info().Msgf("[com.jtbonhomme.server] subscribed event")
+			log.Info().Msgf("[server-general] subscribed event")
 			wg.Done()
 		})
 

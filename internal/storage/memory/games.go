@@ -21,7 +21,7 @@ func (m *Memory) ListGames() []*games.Game {
 func (m *Memory) CreateGame(min, max int) (*games.Game, error) {
 	game := games.New(m.log, min, max)
 
-	m.games[game.ID().String()] = game
+	m.games[game.ID.String()] = game
 
 	return game, nil
 }

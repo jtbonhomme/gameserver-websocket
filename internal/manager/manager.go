@@ -15,13 +15,11 @@ import (
 
 const (
 	defaultShutdownTimeout        = 3 * time.Second
-	ServerPublishChannel   string = "com.jtbonhomme.server"
+	ServerPublishChannel   string = "server-general"
 )
 
 type Manager struct {
-	log *zerolog.Logger
-	//games           []*games.Game
-	//players         []*players.Player
+	log             *zerolog.Logger
 	err             chan error
 	node            *centrifuge.Node
 	shutdownTimeout time.Duration
@@ -55,9 +53,7 @@ func New(l *zerolog.Logger, s storage.Storage) *Manager {
 	logger := l.Output(output)
 
 	return &Manager{
-		log: &logger,
-		//games:           []*games.Game{},
-		//players:         []*players.Player{},
+		log:             &logger,
 		err:             make(chan error),
 		shutdownTimeout: defaultShutdownTimeout,
 		store:           s,

@@ -15,6 +15,7 @@ const (
 	StartGame        string = "startGame"
 	StopGame         string = "stopGame"
 	IsGameStarted    string = "isGameStarted"
+	JoinGame         string = "joinGame"
 )
 
 const (
@@ -45,6 +46,8 @@ func (m *Manager) HandleRPC(e centrifuge.RPCEvent, c centrifuge.RPCCallback) {
 		m.StopGame(e.Data, c)
 	case IsGameStarted:
 		m.IsGameStarted(e.Data, c)
+	case JoinGame:
+		m.JoinGame(e.Data, c)
 	// Default
 	default:
 		msg := fmt.Sprintf("unsupported method %s", e.Method)
