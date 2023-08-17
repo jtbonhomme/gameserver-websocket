@@ -6,7 +6,7 @@ import (
 
 	"github.com/centrifugal/centrifuge"
 	"github.com/google/uuid"
-	"github.com/jtbonhomme/gameserver-websocket/internal/models"
+	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 )
 
 // ListPlayers returns the list of all players.
@@ -40,7 +40,7 @@ func (m *Manager) RegisterPlayer(data []byte, c centrifuge.RPCCallback) {
 	var b []byte
 	var err error
 
-	var player models.Player
+	var player players.Player
 	err = json.Unmarshal(data, &player)
 	if err != nil {
 		status = KO
@@ -76,7 +76,7 @@ func (m *Manager) UnregisterPlayer(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 	var err error
 
-	var player models.Player
+	var player players.Player
 	err = json.Unmarshal(data, &player)
 	if err != nil {
 		status = KO

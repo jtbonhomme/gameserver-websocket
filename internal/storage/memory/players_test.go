@@ -1,10 +1,7 @@
 package memory_test
 
 import (
-	"fmt"
-	"os"
 	"testing"
-	"time"
 
 	"github.com/rs/zerolog"
 
@@ -12,13 +9,7 @@ import (
 )
 
 func TestMemoryPlayer(t *testing.T) {
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	output := zerolog.ConsoleWriter{
-		Out:           os.Stderr,
-		TimeFormat:    time.RFC3339,
-		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[main] %s", i) },
-	}
-	logger := zerolog.New(output).With().Timestamp().Logger()
+	logger := zerolog.Nop()
 
 	// concrete memory test storage implementation
 	mem := memory.New(&logger)

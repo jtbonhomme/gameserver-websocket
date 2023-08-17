@@ -23,7 +23,7 @@ func main() {
 	output := zerolog.ConsoleWriter{
 		Out:           os.Stderr,
 		TimeFormat:    time.RFC3339,
-		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[main] %s", i) },
+		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[main] %s", i) },
 	}
 	logger := zerolog.New(output).With().Timestamp().Logger()
 

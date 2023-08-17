@@ -5,12 +5,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/jtbonhomme/gameserver-websocket/internal/models"
+	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 )
 
 // ListPlayers returns all registered players (with ID anonymized).
-func (m *Memory) ListPlayers() []*models.Player {
-	players := []*models.Player{}
+func (m *Memory) ListPlayers() []*players.Player {
+	players := []*players.Player{}
 	for _, value := range m.players {
 		players = append(players, value)
 	}
@@ -18,7 +18,7 @@ func (m *Memory) ListPlayers() []*models.Player {
 }
 
 // RegisterPlayer records a player with the given name.
-func (m *Memory) RegisterPlayer(id, name string) (*models.Player, error) {
+func (m *Memory) RegisterPlayer(id, name string) (*players.Player, error) {
 	// if provided id matches a registered player
 	if id != uuid.Nil.String() {
 		player, ok := m.players[id]
@@ -32,7 +32,7 @@ func (m *Memory) RegisterPlayer(id, name string) (*models.Player, error) {
 		return nil, fmt.Errorf("failed to create player ID: %v", err)
 	}
 
-	player := &models.Player{
+	player := &players.Player{
 		ID:   playerID,
 		Name: name,
 	}

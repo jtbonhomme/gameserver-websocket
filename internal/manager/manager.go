@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/jtbonhomme/gameserver-websocket/internal/models"
 	"github.com/jtbonhomme/gameserver-websocket/internal/storage"
 
 	"github.com/centrifugal/centrifuge"
@@ -20,9 +19,9 @@ const (
 )
 
 type Manager struct {
-	log             *zerolog.Logger
-	games           []*models.Game
-	players         []*models.Player
+	log *zerolog.Logger
+	//games           []*games.Game
+	//players         []*players.Player
 	err             chan error
 	node            *centrifuge.Node
 	shutdownTimeout time.Duration
@@ -56,9 +55,9 @@ func New(l *zerolog.Logger, s storage.Storage) *Manager {
 	logger := l.Output(output)
 
 	return &Manager{
-		log:             &logger,
-		games:           []*models.Game{},
-		players:         []*models.Player{},
+		log: &logger,
+		//games:           []*games.Game{},
+		//players:         []*players.Player{},
 		err:             make(chan error),
 		shutdownTimeout: defaultShutdownTimeout,
 		store:           s,

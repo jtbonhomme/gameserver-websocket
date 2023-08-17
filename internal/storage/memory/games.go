@@ -2,38 +2,26 @@ package memory
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 
-	"github.com/jtbonhomme/gameserver-websocket/internal/models"
-	"github.com/jtbonhomme/gameserver-websocket/internal/utils"
+	"github.com/jtbonhomme/gameserver-websocket/internal/games"
 )
 
 // ListGames returns all games.
-func (m *Memory) ListGames() []*models.Game {
-	games := []*models.Game{}
+func (m *Memory) ListGames() []*games.Game {
+	result := []*games.Game{}
 	for _, value := range m.games {
-		games = append(games, value)
+		result = append(result, value)
 	}
-	return games
+	return result
 }
 
 // CreateGame instantiates a new game.
-func (m *Memory) CreateGame(min, max int) (*models.Game, error) {
-	gameID, err := uuid.NewUUID()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create game ID: %v", err)
-	}
+func (m *Memory) CreateGame(min, max int) (*games.Game, error) {
+	game := games.New(m.log, min, max)
 
-	game := &models.Game{
-		ID:         gameID,
-		MinPlayers: min,
-		MaxPlayers: max,
-		Started:    false,
-		Players:    []string{},
-	}
-	m.games[gameID.String()] = game
+	m.games[game.ID().String()] = game
 
 	return game, nil
 }
@@ -49,17 +37,10 @@ func (m *Memory) StartGame(id string) error {
 		return fmt.Errorf("unknown game id %s", id)
 	}
 
-	if game.Started {
-		return fmt.Errorf("game already started")
+	err := game.Start()
+	if err != nil {
+		return fmt.Errorf("error starting game: %s", err.Error())
 	}
-
-	players := game.Players
-	if game.MinPlayers != 0 && len(players) < game.MinPlayers {
-		return fmt.Errorf("min player number %d not reached yet", game.MinPlayers)
-	}
-
-	game.Started = true
-	game.StartTime = time.Now()
 	m.games[id] = game
 
 	return nil
@@ -76,12 +57,11 @@ func (m *Memory) StopGame(id string) error {
 		return fmt.Errorf("unknown game id %s", id)
 	}
 
-	if !game.Started {
-		return fmt.Errorf("game not started")
+	err := game.Stop()
+	if err != nil {
+		return fmt.Errorf("error stopping game: %s", err.Error())
 	}
 
-	game.Started = false
-	game.EndTime = time.Now()
 	m.games[id] = game
 
 	return nil
@@ -98,7 +78,7 @@ func (m *Memory) IsGameStarted(id string) (bool, error) {
 		return false, fmt.Errorf("unknown game id %s", id)
 	}
 
-	return game.Started, nil
+	return game.IsStarted(), nil
 }
 
 // JoinGame adds a player to a game.
@@ -121,21 +101,11 @@ func (m *Memory) JoinGame(idGame, idPlayer string) error {
 		return fmt.Errorf("unknown player id %s", idPlayer)
 	}
 
-	if game.Started {
-		return fmt.Errorf("game already started, players can not join anymore")
+	err := game.AddPlayer(idPlayer)
+	if err != nil {
+		return fmt.Errorf("error adding player to game: %s", err.Error())
 	}
-
-	players := game.Players
-	if utils.ContainsString(players, idPlayer) {
-		return fmt.Errorf("player id %s already joined the game", idPlayer)
-	}
-
-	if game.MaxPlayers != 0 && len(players) == game.MaxPlayers {
-		return fmt.Errorf("max player number %d already already reached", game.MaxPlayers)
-	}
-
-	players = append(players, idPlayer)
-	m.games[idGame].Players = players
+	m.games[idGame] = game
 
 	return nil
 }

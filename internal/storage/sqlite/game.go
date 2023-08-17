@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jtbonhomme/gameserver-websocket/internal/models"
+	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 )
 
 // Game represents a game.
@@ -13,7 +13,7 @@ type Game struct {
 	ID         int
 	MinPlayers int
 	MaxPlayers int
-	Players    []*models.Player
+	Players    []*players.Player
 	Started    bool
 	StartTime  time.Time
 	EndTime    time.Time
@@ -101,7 +101,7 @@ func (s *SQLite) GetGameStats(gameID int) (*GameStats, error) {
 }
 
 // HallOfFame represents the hall of fame of the best players.
-type HallOfFame []*models.Player
+type HallOfFame []*players.Player
 
 // GetHallOfFame retrieves the hall of fame of the best players.
 func (s *SQLite) GetHallOfFame(limit int) (HallOfFame, error) {
@@ -114,7 +114,7 @@ func (s *SQLite) GetHallOfFame(limit int) (HallOfFame, error) {
 	var hallOfFame HallOfFame
 
 	for rows.Next() {
-		player := &models.Player{}
+		player := &players.Player{}
 		err := rows.Scan(&player.ID, &player.Name, &player.Score)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan hall of fame row: %v", err)

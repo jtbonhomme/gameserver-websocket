@@ -4,22 +4,22 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jtbonhomme/gameserver-websocket/internal/models"
+	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 )
 
 // ListAll returns all registered players.
-func (s *SQLite) ListAll() []*models.Player {
-	return []*models.Player{}
+func (s *SQLite) ListAll() []*players.Player {
+	return []*players.Player{}
 }
 
 // Register registers a player with the given name.
-func (s *SQLite) Register(id uuid.UUID, name string) (*models.Player, error) {
+func (s *SQLite) Register(id uuid.UUID, name string) (*players.Player, error) {
 	playerID, err := uuid.NewUUID()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create player ID: %v", err)
 	}
 
-	player := &models.Player{
+	player := &players.Player{
 		ID:   playerID,
 		Name: name,
 	}

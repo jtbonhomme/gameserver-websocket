@@ -2,17 +2,14 @@ package manager_test
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 	"testing"
-	"time"
 
 	"github.com/centrifugal/centrifuge"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"github.com/jtbonhomme/gameserver-websocket/internal/manager"
-	"github.com/jtbonhomme/gameserver-websocket/internal/models"
+	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 	"github.com/jtbonhomme/gameserver-websocket/internal/storage/memory"
 )
 
@@ -24,14 +21,7 @@ type Response struct {
 func TestMemoryPlayer(t *testing.T) {
 	var response Response
 
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	output := zerolog.ConsoleWriter{
-		Out:           os.Stderr,
-		TimeFormat:    time.RFC3339,
-		FormatMessage: func(i interface{}) string { return fmt.Sprintf("[main] %s", i) },
-	}
-	logger := zerolog.New(output).With().Timestamp().Logger()
-
+	logger := zerolog.Nop()
 	// concrete memory test storage implementation
 	s := memory.New(&logger)
 
@@ -59,7 +49,7 @@ func TestMemoryPlayer(t *testing.T) {
 		t.Errorf("error while unmarshaling response %q: %s", string(r1), err.Error())
 	}
 
-	var player1 models.Player
+	var player1 players.Player
 	err = json.Unmarshal([]byte(response.Result), &player1)
 	if err != nil {
 		t.Errorf("error while unmarshaling result %q: %s", response.Result, err.Error())
@@ -88,7 +78,7 @@ func TestMemoryPlayer(t *testing.T) {
 		t.Errorf("error while unmarshaling response %q: %s", string(r2), err.Error())
 	}
 
-	var player2 models.Player
+	var player2 players.Player
 	err = json.Unmarshal([]byte(response.Result), &player2)
 	if err != nil {
 		t.Errorf("error while unmarshalingresult  %q: %s", response.Result, err.Error())
@@ -119,7 +109,7 @@ func TestMemoryPlayer(t *testing.T) {
 		t.Errorf("error while unmarshaling response %q: %s", string(r3), err.Error())
 	}
 
-	var player3 models.Player
+	var player3 players.Player
 	err = json.Unmarshal([]byte(response.Result), &player3)
 	if err != nil {
 		t.Errorf("error while unmarshaling result %q: %s", response.Result, err.Error())
@@ -151,17 +141,17 @@ func TestMemoryPlayer(t *testing.T) {
 		t.Errorf("error while unmarshaling response %q: %s", string(rAll), err.Error())
 	}
 
-	var players []models.Player
-	err = json.Unmarshal([]byte(response.Result), &players)
+	var players1 []players.Player
+	err = json.Unmarshal([]byte(response.Result), &players1)
 	if err != nil {
 		t.Errorf("error while unmarshaling result %q: %s", response.Result, err.Error())
 	}
 
-	if len(players) != 2 {
+	if len(players1) != 2 {
 		t.Errorf("expected 2 registered players")
 	}
 
-	for _, p := range players {
+	for _, p := range players1 {
 		if p.ID != uuid.Nil {
 			t.Errorf("error, expected UUID returned by listAll to nil")
 		}
@@ -203,7 +193,7 @@ func TestMemoryPlayer(t *testing.T) {
 		t.Errorf("error while unmarshaling response %q: %s", string(rAll2), err.Error())
 	}
 
-	var players2 []models.Player
+	var players2 []players.Player
 	err = json.Unmarshal([]byte(response.Result), &players2)
 	if err != nil {
 		t.Errorf("error while unmarshaling result %q: %s", response.Result, err.Error())

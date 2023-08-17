@@ -6,7 +6,7 @@ import (
 
 	"github.com/centrifugal/centrifuge"
 	"github.com/google/uuid"
-	"github.com/jtbonhomme/gameserver-websocket/internal/models"
+	"github.com/jtbonhomme/gameserver-websocket/internal/games"
 )
 
 // ListGames returns all games.
@@ -30,13 +30,18 @@ func (m *Manager) ListGames(data []byte, c centrifuge.RPCCallback) {
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 }
 
+type PayloadGame struct {
+	MinPlayers int `json:"minplayers"`
+	MaxPlayers int `json:"maxplayers"`
+}
+
 // CreateGame instantiates a new game.
 func (m *Manager) CreateGame(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 	var b []byte
 	var err error
 
-	var game models.Game
+	var game PayloadGame
 	err = json.Unmarshal(data, &game)
 	if err != nil {
 		status = KO
@@ -65,7 +70,7 @@ func (m *Manager) CreateGame(data []byte, c centrifuge.RPCCallback) {
 	msg = string(b)
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 
-	_, err = m.node.Publish(ServerPublishChannel, []byte(`{"message": "gameCreated", "data": "`+createdGame.ID.String()+`"}`))
+	_, err = m.node.Publish(ServerPublishChannel, []byte(`{"message": "gameCreated", "data": "`+createdGame.ID().String()+`"}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())
 	}
@@ -76,7 +81,7 @@ func (m *Manager) StartGame(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 	var err error
 
-	var game models.Game
+	var game games.Game
 	err = json.Unmarshal(data, &game)
 	if err != nil {
 		status = KO
@@ -85,7 +90,7 @@ func (m *Manager) StartGame(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	err = m.store.StartGame(game.ID.String())
+	err = m.store.StartGame(game.ID().String())
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to start game %v: %s", game, err.Error())
@@ -103,7 +108,7 @@ func (m *Manager) StopGame(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 	var err error
 
-	var game models.Game
+	var game games.Game
 	err = json.Unmarshal(data, &game)
 	if err != nil {
 		status = KO
@@ -112,7 +117,7 @@ func (m *Manager) StopGame(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	err = m.store.StopGame(game.ID.String())
+	err = m.store.StopGame(game.ID().String())
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to stop game %v: %s", game, err.Error())
@@ -131,7 +136,7 @@ func (m *Manager) IsGameStarted(data []byte, c centrifuge.RPCCallback) {
 	var started bool
 	var err error
 
-	var game models.Game
+	var game games.Game
 	err = json.Unmarshal(data, &game)
 	if err != nil {
 		status = KO
@@ -140,7 +145,7 @@ func (m *Manager) IsGameStarted(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	started, err = m.store.IsGameStarted(game.ID.String())
+	started, err = m.store.IsGameStarted(game.ID().String())
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to stop game %v: %s", game, err.Error())
