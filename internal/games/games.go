@@ -14,13 +14,13 @@ import (
 
 type Game struct {
 	log        *zerolog.Logger
-	id         uuid.UUID `json:"id"`
-	started    bool      `json:"started"`
-	players    []string  `json:"players"`
-	minplayers int       `json:"minplayers"`
-	maxplayers int       `json:"maxplayers"`
-	startTime  time.Time `json:"startTime"`
-	endTime    time.Time `json:"endTime"`
+	id         uuid.UUID
+	started    bool
+	players    []string
+	minplayers int
+	maxplayers int
+	startTime  time.Time
+	endTime    time.Time
 	state      *state.State
 }
 

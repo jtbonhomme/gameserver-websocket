@@ -26,17 +26,10 @@ func (m *Memory) RegisterPlayer(id, name string) (*players.Player, error) {
 			return player, nil
 		}
 	}
-	// else, create a new register for this player
-	playerID, err := uuid.NewUUID()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create player ID: %v", err)
-	}
 
-	player := &players.Player{
-		ID:   playerID,
-		Name: name,
-	}
-	m.players[playerID.String()] = player
+	player := players.New(name)
+
+	m.players[player.ID.String()] = player
 
 	return player, nil
 }

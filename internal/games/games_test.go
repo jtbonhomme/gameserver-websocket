@@ -89,7 +89,10 @@ func TestGame_Stop(t *testing.T) {
 	}
 
 	// Add the same player again, should not add a duplicate
-	game.AddPlayer(playerID)
+	err = game.AddPlayer(playerID)
+	if err == nil {
+		t.Errorf("expected error when adding a player already added: %v", err)
+	}
 	if len(game.Players()) != 1 {
 		t.Errorf("Expected 1 player after adding duplicate, but got %d", len(game.Players()))
 	}

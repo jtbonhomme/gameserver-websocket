@@ -6,7 +6,6 @@ import (
 
 	"github.com/centrifugal/centrifuge"
 	"github.com/google/uuid"
-	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 )
 
 // ListPlayers returns the list of all players.
@@ -34,13 +33,18 @@ func (m *Manager) ListPlayers(data []byte, c centrifuge.RPCCallback) {
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result":%q}`, status, msg))}, nil)
 }
 
+type Player struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
 // RegisterPlayer handles new player registration.
 func (m *Manager) RegisterPlayer(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 	var b []byte
 	var err error
 
-	var player players.Player
+	var player Player
 	err = json.Unmarshal(data, &player)
 	if err != nil {
 		status = KO
@@ -76,7 +80,7 @@ func (m *Manager) UnregisterPlayer(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 	var err error
 
-	var player players.Player
+	var player Player
 	err = json.Unmarshal(data, &player)
 	if err != nil {
 		status = KO
