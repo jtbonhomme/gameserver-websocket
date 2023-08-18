@@ -61,11 +61,13 @@ func (m *Manager) CreateGame(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
+	m.log.Debug().Msgf("game state: %s", createdGame.CurrentState())
 	status = OK
 	msg = string(b)
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 
-	_, err = m.node.Publish(ServerPublishChannel, []byte(`{"message": "game created", "data": "`+createdGame.ID.String()+`"}`))
+	_, err = m.node.Publish(ServerPublishChannel,
+		[]byte(`{"type": "creation", "actor": "game", "id": "`+createdGame.ID.String()+`", "data": ""}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())
 	}
@@ -93,7 +95,7 @@ func (m *Manager) StartGame(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	_, err = m.node.Publish(ServerPublishChannel, []byte(`{"message": "game started", "data": "`+game.ID.String()+`"}`))
+	_, err = m.node.Publish(ServerPublishChannel, []byte(`{"type": "start", "actor": "game", "id": "`+game.ID.String()+`", "data": ""}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())
 	}
@@ -188,7 +190,8 @@ func (m *Manager) JoinGame(data []byte, c centrifuge.RPCCallback) {
 	if err != nil {
 		m.log.Error().Msgf("error retrieving player's name: %s", err.Error())
 	} else {
-		_, err = m.node.Publish(ServerPublishChannel, []byte(`{"message": "player joined game", "data": "`+name+`"}`))
+		_, err = m.node.Publish(ServerPublishChannel,
+			[]byte(`{"type": "join", "actor": "game", "id": "`+joinData.IDGame.String()+`", "data": "`+name+`"}`))
 		if err != nil {
 			m.log.Error().Msgf("manager publication error: %s", err.Error())
 		}

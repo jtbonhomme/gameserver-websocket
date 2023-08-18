@@ -65,7 +65,8 @@ func (m *Manager) RegisterPlayer(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	_, err = m.node.Publish(ServerPublishChannel, []byte(`{"message": "new player registered", "data": "`+registeredPlayer.Name+`"}`))
+	_, err = m.node.Publish(ServerPublishChannel,
+		[]byte(`{"type": "registration", "actor": "player", "id": "", "data": "`+registeredPlayer.Name+`"}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())
 	}

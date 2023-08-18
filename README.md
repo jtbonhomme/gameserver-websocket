@@ -37,23 +37,47 @@ The default port is 8000.
 The clients connect to the server and send RPC commands.
 Each RPC command is made with a `method` and a payload.
 
-### Topics
+### Publish
 
-* `com.jtbonhomme.players`
-This topics is used for actions related to players actions (registrations, wall of fame, ...)
+Publications are messages sent by the game server to connected clients (eg players)
 
-* `com.jtbonhomme.game`
-This topics is used for actions related to game actions (crete or join game)
-Each time a game is created, a unique and dedicated topics is created and is identified with an unique identifier.
+#### Topics
 
-### RPC Methods
+* General game topic
+This topic is used for actions related to players actions (player registrations, create or join game, ...)
+
+* Dedicated game topics
+
+These topics are used for actions related to a single game.
+Each time a game is created, a unique and dedicated topics is created.
+
+#### Message format
+
+Messages are encoded in JSON with the following schema:
+```json
+{
+    "type": string,
+    "actor": string,
+    "id": string,
+    "data" string,
+}
+```
+
+The following types are:
+* `information`: general information related to the server or a game
+* `creation`: new game in the server
+* `start`: game started for example
+* `join`: player (name provided in data) joined a game
+* `registration`: new player registered (name provided in data)
+
+### RPC
+
+#### Methods
 
 * `register`: handles new player registration
 * `unregister`: removes a player from registry
 * `listAll`: returns the list of all players
-
-#### `game`
-
+...
 
 
 ## Game server Actions

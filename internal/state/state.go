@@ -16,11 +16,11 @@ const (
 	CreatedState      string = "created"
 	InitializingState string = "initializing"
 	StartedState      string = "started"
-	EndedState        string = "ended"
+	StoppedState      string = "stopped"
 	// Events
 	InitEvent  string = "init"
 	StartEvent string = "start"
-	EndEvent   string = "end"
+	StopEvent  string = "stop"
 )
 
 // State structure maintains game state.
@@ -32,20 +32,20 @@ type State struct {
 // New initializes a new game State.
 func New(l *zerolog.Logger) *State {
 	events := fsm.Events{
-		{
+		/*{
 			Name: InitEvent,
 			Src:  []string{CreatedState},
 			Dst:  InitializingState,
-		},
+		},*/
 		{
 			Name: StartEvent,
-			Src:  []string{InitializingState},
+			Src:  []string{CreatedState},
 			Dst:  StartedState,
 		},
 		{
-			Name: EndEvent,
+			Name: StopEvent,
 			Src:  []string{StartedState},
-			Dst:  EndedState,
+			Dst:  StoppedState,
 		},
 	}
 
@@ -78,7 +78,7 @@ func (s *State) Start() error {
 	return s.state.Event(context.Background(), StartEvent)
 }
 
-// End sends "end" event to game engine internal state.
-func (s *State) End() error {
-	return s.state.Event(context.Background(), EndEvent)
+// Stop sends "stop" event to game engine internal state.
+func (s *State) Stop() error {
+	return s.state.Event(context.Background(), StopEvent)
 }

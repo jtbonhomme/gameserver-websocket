@@ -62,6 +62,8 @@ func New(l *zerolog.Logger, min, max int) *Game {
 // if the minimum player number registered is not reached, an
 // error is returned.
 func (game *Game) Start() error {
+	var err error
+
 	if game.started {
 		return fmt.Errorf("game already started")
 	}
@@ -69,6 +71,11 @@ func (game *Game) Start() error {
 	players := game.players
 	if game.MinPlayers != 0 && len(players) < game.MinPlayers {
 		return fmt.Errorf("min player number %d not reached yet", game.MinPlayers)
+	}
+
+	err = game.state.Start()
+	if err != nil {
+		return fmt.Errorf("game state can not be updated to start: %s", err.Error())
 	}
 
 	game.started = true
@@ -80,9 +87,15 @@ func (game *Game) Start() error {
 // Stop stops a started game. If the game is not started, an
 // error is returned.
 func (game *Game) Stop() error {
+	var err error
 
 	if !game.started {
 		return fmt.Errorf("game not started")
+	}
+
+	err = game.state.Stop()
+	if err != nil {
+		return fmt.Errorf("game state can not be updated to stop: %s", err.Error())
 	}
 
 	game.started = false
@@ -119,4 +132,9 @@ func (game *Game) AddPlayer(id string) error {
 // Players returns game's registered players.
 func (game *Game) Players() []string {
 	return game.players
+}
+
+// CurrentState returns internal game state.
+func (game *Game) CurrentState() string {
+	return game.state.Current()
 }
