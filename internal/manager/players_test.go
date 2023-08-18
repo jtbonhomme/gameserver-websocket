@@ -6,33 +6,19 @@ import (
 
 	"github.com/centrifugal/centrifuge"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 
-	"github.com/jtbonhomme/gameserver-websocket/internal/manager"
 	"github.com/jtbonhomme/gameserver-websocket/internal/players"
-	"github.com/jtbonhomme/gameserver-websocket/internal/storage/memory"
 )
 
-type Response struct {
-	Status string `json:"status"`
-	Result string `json:"result"`
-}
-
-func TestMemoryPlayer(t *testing.T) {
+func TestPlayers(t *testing.T) {
 	var response Response
-
-	logger := zerolog.Nop()
-	// concrete memory test storage implementation
-	s := memory.New(&logger)
-
-	m := manager.New(&logger, s)
 
 	replyChan := make(chan []byte)
 	errChan := make(chan error)
 
 	// first time player registration
 	go func() {
-		m.RegisterPlayer([]byte(`{"name":"name1"}`), func(r centrifuge.RPCReply, e error) {
+		mgr.RegisterPlayer([]byte(`{"name":"name1"}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
@@ -61,7 +47,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	go func() {
-		m.RegisterPlayer([]byte(`{"name":"name2"}`), func(r centrifuge.RPCReply, e error) {
+		mgr.RegisterPlayer([]byte(`{"name":"name2"}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
@@ -92,7 +78,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	go func() {
-		m.RegisterPlayer([]byte(`{"id": "`+id+`", "name":"name1"}`), func(r centrifuge.RPCReply, e error) {
+		mgr.RegisterPlayer([]byte(`{"id": "`+id+`", "name":"name1"}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
@@ -124,7 +110,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	go func() {
-		m.ListPlayers([]byte(`{}`), func(r centrifuge.RPCReply, e error) {
+		mgr.ListPlayers([]byte(`{}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
@@ -158,7 +144,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	go func() {
-		m.UnregisterPlayer([]byte(`{"id": "`+id+`"}`), func(r centrifuge.RPCReply, e error) {
+		mgr.UnregisterPlayer([]byte(`{"id": "`+id+`"}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
@@ -176,7 +162,7 @@ func TestMemoryPlayer(t *testing.T) {
 	}
 
 	go func() {
-		m.ListPlayers([]byte(`{}`), func(r centrifuge.RPCReply, e error) {
+		mgr.ListPlayers([]byte(`{}`), func(r centrifuge.RPCReply, e error) {
 			replyChan <- r.Data
 			errChan <- e
 		})
