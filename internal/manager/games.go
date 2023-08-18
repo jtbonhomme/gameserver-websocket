@@ -78,11 +78,19 @@ func (m *Manager) StartGame(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 	var err error
 
-	var game games.Game
-	err = json.Unmarshal(data, &game)
+	var g games.Game
+	err = json.Unmarshal(data, &g)
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to unmarshal data %q: %s", string(data), err.Error())
+		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
+		return
+	}
+
+	game, err := m.store.GameByID(g.ID.String())
+	if err != nil {
+		status = KO
+		msg = fmt.Sprintf("unable to retrieve game from its ID: %s", err.Error())
 		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 		return
 	}
@@ -95,9 +103,23 @@ func (m *Manager) StartGame(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	_, err = m.node.Publish(ServerPublishChannel, []byte(`{"type": "start", "actor": "game", "id": "`+game.ID.String()+`", "data": ""}`))
+	// publication to all clients who subscribed to a channel
+	_, err = m.node.Publish(ServerPublishChannel,
+		[]byte(`{"type": "start", "actor": "game", "id": "`+game.ID.String()+`", "data": ""}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())
+	}
+
+	// publication to all clients who subscribed to a channel
+	_, err = m.node.Publish(ServerPublishChannel,
+		[]byte(`{"type": "rpc", "actor": "game", "id": "`+game.ID.String()+`", "data": "revealTwoCards"}`))
+	if err != nil {
+		m.log.Error().Msgf("manager publication error: %s", err.Error())
+	}
+
+	// message to one client
+	for _, playerID := range game.Players() {
+		m.playersToClientsMap[playerID].Send([]byte(`{"id": "` + playerID + `", "action": "do something"}`))
 	}
 
 	status = OK
@@ -186,12 +208,12 @@ func (m *Manager) JoinGame(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	name, err := m.store.NameByID(joinData.IDPlayer.String())
+	player, err := m.store.PlayerByID(joinData.IDPlayer.String())
 	if err != nil {
 		m.log.Error().Msgf("error retrieving player's name: %s", err.Error())
 	} else {
 		_, err = m.node.Publish(ServerPublishChannel,
-			[]byte(`{"type": "join", "actor": "game", "id": "`+joinData.IDGame.String()+`", "data": "`+name+`"}`))
+			[]byte(`{"type": "join", "actor": "game", "id": "`+joinData.IDGame.String()+`", "data": "`+player.Name+`"}`))
 		if err != nil {
 			m.log.Error().Msgf("manager publication error: %s", err.Error())
 		}

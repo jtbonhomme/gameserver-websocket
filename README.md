@@ -69,6 +69,7 @@ The following types are:
 * `start`: game started for example
 * `join`: player (name provided in data) joined a game
 * `registration`: new player registered (name provided in data)
+* `rpc`: all players are expected to perform a remote procedure call
 
 ### RPC
 

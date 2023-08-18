@@ -109,3 +109,16 @@ func (m *Memory) JoinGame(idGame, idPlayer string) error {
 
 	return nil
 }
+
+// GameByID returns a game object from its ID.
+func (m *Memory) GameByID(id string) (*games.Game, error) {
+	// if provided id matches an existing game
+	if id != uuid.Nil.String() {
+		game, ok := m.games[id]
+		if ok {
+			return game, nil
+		}
+	}
+
+	return nil, fmt.Errorf("unknown game id: %s", id)
+}

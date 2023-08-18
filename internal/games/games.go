@@ -21,7 +21,6 @@ const (
 type Game struct {
 	log        *zerolog.Logger
 	ID         uuid.UUID `json:"id"`
-	started    bool
 	players    []string
 	MinPlayers int `json:"minPlayers"`
 	MaxPlayers int `json:"maxPlayers"`
@@ -49,7 +48,6 @@ func New(l *zerolog.Logger, min, max int) *Game {
 		ID:         gameID,
 		MinPlayers: min,
 		MaxPlayers: max,
-		started:    false,
 		players:    []string{},
 		state:      state.New(l),
 		TopicName:  GameTopicPrefix + nameGenerator.Generate(),
@@ -64,7 +62,7 @@ func New(l *zerolog.Logger, min, max int) *Game {
 func (game *Game) Start() error {
 	var err error
 
-	if game.started {
+	if game.IsStarted() {
 		return fmt.Errorf("game already started")
 	}
 
@@ -78,7 +76,6 @@ func (game *Game) Start() error {
 		return fmt.Errorf("game state can not be updated to start: %s", err.Error())
 	}
 
-	game.started = true
 	game.startTime = time.Now()
 
 	return nil
@@ -89,7 +86,7 @@ func (game *Game) Start() error {
 func (game *Game) Stop() error {
 	var err error
 
-	if !game.started {
+	if !game.IsStarted() {
 		return fmt.Errorf("game not started")
 	}
 
@@ -98,7 +95,6 @@ func (game *Game) Stop() error {
 		return fmt.Errorf("game state can not be updated to stop: %s", err.Error())
 	}
 
-	game.started = false
 	game.endTime = time.Now()
 
 	return nil
@@ -106,14 +102,14 @@ func (game *Game) Stop() error {
 
 // IsStarted returns true if the game is started.
 func (game *Game) IsStarted() bool {
-	return game.started
+	return game.state.Current() == state.StartedState
 }
 
 // AddPlayer register a player to the game. If the player is already registered,
 // the method does nothing. If the maximum number of players is alreary
 // reached, of if the game is already started, the methods returns an error.
 func (game *Game) AddPlayer(id string) error {
-	if game.started {
+	if game.IsStarted() {
 		return errors.New("game alreay started")
 	}
 

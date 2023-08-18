@@ -17,8 +17,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var wg sync.WaitGroup
-
 const (
 	serverTopicName string = "server-general"
 )
@@ -28,7 +26,7 @@ type Response struct {
 	Result string `json:"result"`
 }
 
-func newClient(log *zerolog.Logger) *centrifuge.Client {
+func newClient(log *zerolog.Logger, wg *sync.WaitGroup) *centrifuge.Client {
 	wsURL := "ws://localhost:8000/connection/websocket"
 
 	c := centrifuge.NewJsonClient(wsURL, centrifuge.Config{
@@ -63,6 +61,7 @@ func newClient(log *zerolog.Logger) *centrifuge.Client {
 
 func main() {
 	var err error
+	var wg sync.WaitGroup
 
 	// Init logger
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -74,13 +73,14 @@ func main() {
 	log := zerolog.New(output).With().Timestamp().Logger()
 
 	log.Info().Msg("start client")
-	c := newClient(&log)
+	c := newClient(&log, &wg)
 	defer c.Close()
 
 	wg.Add(1)
 	err = c.Connect()
 	if err != nil {
-		log.Panic().Msgf("connect error: %s", err.Error())
+		log.Error().Msgf("connect error: %s", err.Error())
+		return
 	}
 
 	log.Info().Msg("waiting client to connect...")
@@ -168,7 +168,9 @@ func main() {
 	}
 	log.Debug().Msgf("joinGame result: %s", string(result.Data))
 
-	gameTopic, err := c.NewSubscription(game.TopicName)
+	gameTopic, err := c.NewSubscription(game.TopicName, centrifuge.SubscriptionConfig{
+		Data: []byte(`{"id":"` + player.ID.String() + `"}`),
+	})
 	if err != nil {
 		log.Error().Msgf("subscription to %s creation error: %s", game.TopicName, err.Error())
 	}

@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,11 +20,16 @@ const (
 )
 
 type Manager struct {
-	log             *zerolog.Logger
-	err             chan error
-	node            *centrifuge.Node
-	shutdownTimeout time.Duration
-	store           storage.Storage
+	log                 *zerolog.Logger
+	err                 chan error
+	node                *centrifuge.Node
+	shutdownTimeout     time.Duration
+	store               storage.Storage
+	playersToClientsMap map[string]*centrifuge.Client
+}
+
+type IDData struct {
+	ID string `json:"id"`
 }
 
 func auth(h http.Handler) http.Handler {
@@ -53,10 +59,11 @@ func New(l *zerolog.Logger, s storage.Storage) *Manager {
 	logger := l.Output(output)
 
 	return &Manager{
-		log:             &logger,
-		err:             make(chan error),
-		shutdownTimeout: defaultShutdownTimeout,
-		store:           s,
+		log:                 &logger,
+		err:                 make(chan error),
+		shutdownTimeout:     defaultShutdownTimeout,
+		store:               s,
+		playersToClientsMap: make(map[string]*centrifuge.Client),
 	}
 }
 
@@ -89,7 +96,18 @@ func (m *Manager) Start() error {
 		m.log.Info().Msgf("client %s (%s) connected via %s (%s)", client.ID(), string(client.Info()), transportName, transportProto)
 
 		client.OnSubscribe(func(e centrifuge.SubscribeEvent, cb centrifuge.SubscribeCallback) {
-			m.log.Info().Msgf("client %s (%s) subscribes on channel %s", client.ID(), string(client.Info()), e.Channel)
+			m.log.Info().Msgf("client %s (%s) subscribes on channel %s", client.ID(), string(e.Data), e.Channel)
+
+			if len(e.Data) != 0 {
+				var iddata IDData
+				err = json.Unmarshal(e.Data, &iddata)
+				if err != nil {
+					m.log.Error().Msgf("error while unmarshaling subscribe data: %s", err.Error())
+				} else {
+					m.playersToClientsMap[iddata.ID] = client
+				}
+			}
+
 			cb(centrifuge.SubscribeReply{}, nil)
 		})
 

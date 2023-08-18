@@ -13,12 +13,10 @@ import (
 
 const (
 	// States
-	CreatedState      string = "created"
-	InitializingState string = "initializing"
-	StartedState      string = "started"
-	StoppedState      string = "stopped"
+	CreatedState string = "created"
+	StartedState string = "started"
+	StoppedState string = "stopped"
 	// Events
-	InitEvent  string = "init"
 	StartEvent string = "start"
 	StopEvent  string = "stop"
 )
@@ -32,11 +30,6 @@ type State struct {
 // New initializes a new game State.
 func New(l *zerolog.Logger) *State {
 	events := fsm.Events{
-		/*{
-			Name: InitEvent,
-			Src:  []string{CreatedState},
-			Dst:  InitializingState,
-		},*/
 		{
 			Name: StartEvent,
 			Src:  []string{CreatedState},

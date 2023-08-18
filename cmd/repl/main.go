@@ -13,8 +13,8 @@ import (
 )
 
 func newClient(log *zerolog.Logger, wg *sync.WaitGroup) *centrifuge.Client {
-	wg.Add(1)
 	wsURL := "ws://localhost:8000/connection/websocket"
+
 	c := centrifuge.NewJsonClient(wsURL, centrifuge.Config{
 		Name:    "centrifuge-go",
 		Data:    []byte(`{"name":"totoro"}`),
@@ -27,37 +27,7 @@ func newClient(log *zerolog.Logger, wg *sync.WaitGroup) *centrifuge.Client {
 
 	c.OnConnected(func(_ centrifuge.ConnectedEvent) {
 		log.Info().Msg("Connected")
-
-		subServer, err := c.NewSubscription("server-general")
-		if err != nil {
-			log.Error().Msgf("subscription creation error: %s", err.Error())
-		}
-
-		subServer.OnJoin(func(e centrifuge.JoinEvent) {
-			log.Info().Msgf("[server-general] join event: %s", e.ClientInfo.Client)
-		})
-
-		subServer.OnError(func(e centrifuge.SubscriptionErrorEvent) {
-			log.Info().Msgf("[server-general] subscription error event: %s", e.Error.Error())
-		})
-
-		subServer.OnPublication(func(e centrifuge.PublicationEvent) {
-			log.Info().Msgf("[server-general] publication event: %s", string(e.Data))
-		})
-
-		subServer.OnSubscribing(func(e centrifuge.SubscribingEvent) {
-			log.Info().Msgf("[server-general] subscribing event: %s", e.Reason)
-		})
-
-		subServer.OnSubscribed(func(e centrifuge.SubscribedEvent) {
-			log.Info().Msgf("[server-general] subscribed event")
-			wg.Done()
-		})
-
-		err = subServer.Subscribe()
-		if err != nil {
-			log.Error().Msgf("subscription error: %s", err.Error())
-		}
+		wg.Done()
 	})
 
 	c.OnDisconnected(func(_ centrifuge.DisconnectedEvent) {
@@ -91,12 +61,52 @@ func main() {
 	c := newClient(&log, &wg)
 	defer c.Close()
 
+	wg.Add(1)
 	err = c.Connect()
 	if err != nil {
 		log.Error().Msgf("connect error: %s", err.Error())
 		return
 	}
+
+	log.Info().Msg("waiting client to connect...")
 	wg.Wait()
+	log.Info().Msg("client connected")
+
+	serverTopic, err := c.NewSubscription("server-general")
+	if err != nil {
+		log.Error().Msgf("subscription creation error: %s", err.Error())
+	}
+
+	serverTopic.OnJoin(func(e centrifuge.JoinEvent) {
+		log.Info().Msgf("[server-general] join event: %s", e.ClientInfo.Client)
+	})
+
+	serverTopic.OnError(func(e centrifuge.SubscriptionErrorEvent) {
+		log.Info().Msgf("[server-general] subscription error event: %s", e.Error.Error())
+	})
+
+	serverTopic.OnPublication(func(e centrifuge.PublicationEvent) {
+		log.Info().Msgf("[server-general] publication event: %s", string(e.Data))
+	})
+
+	serverTopic.OnSubscribing(func(e centrifuge.SubscribingEvent) {
+		log.Info().Msgf("[server-general] subscribing event: %s", e.Reason)
+	})
+
+	serverTopic.OnSubscribed(func(e centrifuge.SubscribedEvent) {
+		log.Info().Msgf("[server-general] subscribed event")
+		wg.Done()
+	})
+
+	wg.Add(1)
+	err = serverTopic.Subscribe()
+	if err != nil {
+		log.Error().Msgf("subscription error: %s", err.Error())
+	}
+
+	log.Info().Msg("waiting client to subscribe...")
+	wg.Wait()
+	log.Info().Msg("client subscribed")
 
 	rpc := replRun()
 	validate := validator.New()
