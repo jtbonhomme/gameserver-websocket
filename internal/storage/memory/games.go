@@ -21,6 +21,10 @@ func (m *Memory) ListGames() []*games.Game {
 func (m *Memory) CreateGame(min, max int) (*games.Game, error) {
 	game := games.New(m.log, min, max)
 
+	err := game.Connect()
+	if err != nil {
+		return nil, fmt.Errorf("error creating game: %s", err.Error())
+	}
 	m.games[game.ID.String()] = game
 
 	return game, nil

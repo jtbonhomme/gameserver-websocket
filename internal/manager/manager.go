@@ -15,9 +15,7 @@ import (
 )
 
 const (
-	defaultShutdownTimeout        = 3 * time.Second
-	defaultRPCTimeout             = 10 * time.Second
-	ServerPublishChannel   string = "server-general"
+	defaultShutdownTimeout = 3 * time.Second
 )
 
 type Manager struct {
@@ -25,7 +23,6 @@ type Manager struct {
 	err                 chan error
 	node                *centrifuge.Node
 	shutdownTimeout     time.Duration
-	waitForRPCTimeout   time.Duration
 	store               storage.Storage
 	playersToClientsMap map[string]*centrifuge.Client
 }
@@ -64,7 +61,6 @@ func New(l *zerolog.Logger, s storage.Storage) *Manager {
 		log:                 &logger,
 		err:                 make(chan error),
 		shutdownTimeout:     defaultShutdownTimeout,
-		waitForRPCTimeout:   defaultRPCTimeout,
 		store:               s,
 		playersToClientsMap: make(map[string]*centrifuge.Client),
 	}
@@ -145,7 +141,7 @@ func (m *Manager) Start() error {
 	http.Handle("/", http.FileServer(http.Dir("./public")))
 
 	go func() {
-		m.log.Info().Msgf("Starting server, visit http://localhost:8000")
+		m.log.Info().Msgf("starting server, visit http://localhost:8000")
 		if err := http.ListenAndServe(":8000", nil); err != nil {
 			m.err <- fmt.Errorf("error listening on :8000: %w", err)
 		}

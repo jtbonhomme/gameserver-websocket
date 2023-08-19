@@ -12,51 +12,16 @@ import (
 
 	centrifuge "github.com/centrifugal/centrifuge-go"
 	"github.com/goombaio/namegenerator"
+	"github.com/rs/zerolog"
+
 	"github.com/jtbonhomme/gameserver-websocket/internal/games"
 	"github.com/jtbonhomme/gameserver-websocket/internal/players"
-	"github.com/rs/zerolog"
-)
-
-const (
-	serverTopicName string = "server-general"
+	"github.com/jtbonhomme/gameserver-websocket/internal/utils"
 )
 
 type Response struct {
 	Status string `json:"status"`
 	Result string `json:"result"`
-}
-
-func newClient(log *zerolog.Logger, wg *sync.WaitGroup) *centrifuge.Client {
-	wsURL := "ws://localhost:8000/connection/websocket"
-
-	c := centrifuge.NewJsonClient(wsURL, centrifuge.Config{
-		Name:    "listening-go-client",
-		Version: "0.0.1",
-	})
-
-	c.OnConnecting(func(_ centrifuge.ConnectingEvent) {
-		log.Info().Msg("Connecting")
-	})
-
-	c.OnConnected(func(_ centrifuge.ConnectedEvent) {
-		log.Info().Msg("Connected")
-		wg.Done()
-	})
-
-	c.OnDisconnected(func(e centrifuge.DisconnectedEvent) {
-		log.Info().Msgf("Disconnected event: %d %s", e.Code, e.Reason)
-		// TODO automatic reconnect?
-	})
-
-	c.OnError(func(e centrifuge.ErrorEvent) {
-		log.Info().Msgf("error: %s", e.Error.Error())
-	})
-
-	c.OnMessage(func(e centrifuge.MessageEvent) {
-		log.Info().Msgf("Message received from server %s", string(e.Data))
-	})
-
-	return c
 }
 
 func main() {
@@ -73,7 +38,7 @@ func main() {
 	log := zerolog.New(output).With().Timestamp().Logger()
 
 	log.Info().Msg("start client")
-	c := newClient(&log, &wg)
+	c := utils.NewClient(&log, utils.DefaultWebsocketURL, &wg)
 	defer c.Close()
 
 	wg.Add(1)
@@ -87,34 +52,10 @@ func main() {
 	wg.Wait()
 	log.Info().Msg("client connected")
 
-	serverTopic, err := c.NewSubscription("server-general")
+	err = utils.Subscribe(&log, c, utils.ServerPublishChannel)
 	if err != nil {
-		log.Error().Msgf("subscription to %s creation error: %s", serverTopicName, err.Error())
-	}
-
-	serverTopic.OnJoin(func(e centrifuge.JoinEvent) {
-		log.Info().Msgf("[%s] join event: %s", serverTopicName, e.ClientInfo.Client)
-	})
-
-	serverTopic.OnError(func(e centrifuge.SubscriptionErrorEvent) {
-		log.Info().Msgf("[%s] subscription error event: %s", serverTopicName, e.Error.Error())
-	})
-
-	serverTopic.OnPublication(func(e centrifuge.PublicationEvent) {
-		log.Info().Msgf("[%s] publication event: %s", serverTopicName, string(e.Data))
-	})
-
-	serverTopic.OnSubscribing(func(e centrifuge.SubscribingEvent) {
-		log.Info().Msgf("[%s] subscribing event: %s", serverTopicName, e.Reason)
-	})
-
-	serverTopic.OnSubscribed(func(e centrifuge.SubscribedEvent) {
-		log.Info().Msgf("[%s] subscribed event", serverTopicName)
-	})
-
-	err = serverTopic.Subscribe()
-	if err != nil {
-		log.Error().Msgf("subscription error: %s", err.Error())
+		log.Error().Msgf("subscribe error: %s", err.Error())
+		return
 	}
 
 	var result centrifuge.RPCResult
@@ -167,22 +108,7 @@ func main() {
 	}
 	log.Debug().Msgf("joinGame result: %s", string(result.Data))
 
-	gameTopic, err := c.NewSubscription(game.TopicName, centrifuge.SubscriptionConfig{
-		Data: []byte(`{"id":"` + player.ID.String() + `"}`),
-	})
-	if err != nil {
-		log.Error().Msgf("subscription to %s creation error: %s", game.TopicName, err.Error())
-	}
-
-	gameTopic.OnJoin(func(e centrifuge.JoinEvent) {
-		log.Info().Msgf("[%s] join event: %s", game.TopicName, e.ClientInfo.Client)
-	})
-
-	gameTopic.OnError(func(e centrifuge.SubscriptionErrorEvent) {
-		log.Info().Msgf("[%s] subscription error event: %s", game.TopicName, e.Error.Error())
-	})
-
-	gameTopic.OnPublication(func(e centrifuge.PublicationEvent) {
+	var publicationHandler = func(e centrifuge.PublicationEvent) {
 		log.Info().Msgf("[%s] publication event: %s", game.TopicName, string(e.Data))
 		var data struct {
 			Type  string `json:"type"`
@@ -201,25 +127,24 @@ func main() {
 			log.Info().Msgf("[%s] revealTwoCards publication event !", game.TopicName)
 			wg.Done()
 		}
-	})
-
-	gameTopic.OnSubscribing(func(e centrifuge.SubscribingEvent) {
-		log.Info().Msgf("[%s] subscribing event: %s", game.TopicName, e.Reason)
-	})
-
-	gameTopic.OnSubscribed(func(e centrifuge.SubscribedEvent) {
-		log.Info().Msgf("[%s] subscribed event", game.TopicName)
-		wg.Done()
-	})
-
-	wg.Add(1)
-	log.Debug().Msgf("subscribing topic %s ...", gameTopic.Channel)
-	err = gameTopic.Subscribe()
-	if err != nil {
-		log.Error().Msgf("subscription error: %s", err.Error())
 	}
-	wg.Wait()
-	log.Debug().Msgf("subscribed topic %s", gameTopic.Channel)
+
+	err = utils.Subscribe(&log,
+		c,
+		game.TopicName,
+		utils.WithSubscriptionConfig(
+			centrifuge.SubscriptionConfig{
+				Data: []byte(`{"id":"` + player.ID.String() + `"}`),
+			},
+		),
+		utils.WithPublicationHandler(publicationHandler),
+	)
+	if err != nil {
+		log.Error().Msgf("subscribe error: %s", err.Error())
+		return
+	}
+
+	log.Debug().Msgf("subscribed topic %s", game.TopicName)
 
 	wg.Add(1)
 	log.Debug().Msgf("START GAME %s", game.Name)

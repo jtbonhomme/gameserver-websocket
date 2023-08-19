@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
+	centrifuge "github.com/centrifugal/centrifuge-go"
 	"github.com/google/uuid"
 	"github.com/goombaio/namegenerator"
 	"github.com/rs/zerolog"
@@ -14,7 +16,8 @@ import (
 )
 
 const (
-	GameTopicPrefix string = "game-"
+	GameTopicPrefix                string = "game-"
+	DefaultClientConnectionTimeout        = 10 * time.Second
 )
 
 type Game struct {
@@ -28,6 +31,7 @@ type Game struct {
 	started    bool
 	TopicName  string `json:"topicName"`
 	Name       string
+	client     *centrifuge.Client
 }
 
 // New creates a new game object with a minimum number of players
@@ -57,6 +61,65 @@ func New(l *zerolog.Logger, min, max int) *Game {
 	}
 
 	return &g
+}
+
+func (game *Game) messageHandler(e centrifuge.MessageEvent) {
+	game.log.Info().Msgf("[%s] message received from server %s", game.Name, (e.Data))
+}
+
+func (game *Game) serverPublicationHandler(e centrifuge.ServerPublicationEvent) {
+	game.log.Info().Msgf("[%s] server publication received %s", game.Name, (e.Data))
+}
+
+func (game *Game) publicationHandler(e centrifuge.PublicationEvent) {
+	game.log.Info().Msgf("[%s] publication received %s", game.Name, (e.Data))
+}
+
+// Connect connects the game to the wrbsocket server.
+func (game *Game) Connect() error {
+	var err error
+	var wg sync.WaitGroup
+	var done = make(chan struct{})
+
+	game.client = utils.NewClient(game.log,
+		utils.DefaultWebsocketURL,
+		&wg,
+		utils.WithMessageHandler(game.messageHandler),
+		utils.WithServerPublicationHandler(game.serverPublicationHandler),
+	)
+
+	wg.Add(1)
+	err = game.client.Connect()
+	if err != nil {
+		return fmt.Errorf("centrifuge client connection error: %s", err.Error())
+	}
+
+	// Will automatically close done channel and end select after all RPC have been called.
+	go func() {
+		game.log.Info().Msg("waiting client to connect...")
+		defer close(done)
+		wg.Wait()
+	}()
+
+	// Blocks until done channel is closed, or timeout occurs.
+	select {
+	case <-done:
+		err = utils.Subscribe(game.log,
+			game.client,
+			game.TopicName,
+			utils.WithSubscriptionConfig(
+				centrifuge.SubscriptionConfig{
+					Data: []byte(`{"id":"` + game.ID.String() + `"}`),
+				},
+			),
+			utils.WithPublicationHandler(game.publicationHandler),
+		)
+
+		return nil
+	case <-time.After(DefaultClientConnectionTimeout):
+		return fmt.Errorf("waiting for client connection failed with timeout")
+	}
+
 }
 
 // Start starts the game. If the game is already started, or

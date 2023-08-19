@@ -6,7 +6,9 @@ import (
 
 	"github.com/centrifugal/centrifuge"
 	"github.com/google/uuid"
+
 	"github.com/jtbonhomme/gameserver-websocket/internal/players"
+	"github.com/jtbonhomme/gameserver-websocket/internal/utils"
 )
 
 // ListPlayers returns the list of all players.
@@ -65,7 +67,7 @@ func (m *Manager) RegisterPlayer(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	_, err = m.node.Publish(ServerPublishChannel,
+	_, err = m.node.Publish(utils.ServerPublishChannel,
 		[]byte(`{"type": "registration", "actor": "player", "id": "", "data": "`+registeredPlayer.Name+`"}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())

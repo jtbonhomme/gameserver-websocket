@@ -6,7 +6,9 @@ import (
 
 	"github.com/centrifugal/centrifuge"
 	"github.com/google/uuid"
+
 	"github.com/jtbonhomme/gameserver-websocket/internal/games"
+	"github.com/jtbonhomme/gameserver-websocket/internal/utils"
 )
 
 // ListGames returns all games.
@@ -65,7 +67,7 @@ func (m *Manager) CreateGame(data []byte, c centrifuge.RPCCallback) {
 	msg = string(b)
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 
-	_, err = m.node.Publish(ServerPublishChannel,
+	_, err = m.node.Publish(utils.ServerPublishChannel,
 		[]byte(`{"type": "creation", "actor": "game", "id": "`+createdGame.ID.String()+`", "data": ""}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())
@@ -103,7 +105,7 @@ func (m *Manager) StartGame(data []byte, c centrifuge.RPCCallback) {
 	}
 
 	// publication to all clients who subscribed to a channel
-	_, err = m.node.Publish(ServerPublishChannel,
+	_, err = m.node.Publish(utils.ServerPublishChannel,
 		[]byte(`{"type": "start", "actor": "game", "id": "`+game.ID.String()+`", "data": ""}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())
@@ -211,7 +213,7 @@ func (m *Manager) JoinGame(data []byte, c centrifuge.RPCCallback) {
 	if err != nil {
 		m.log.Error().Msgf("error retrieving player's name: %s", err.Error())
 	} else {
-		_, err = m.node.Publish(ServerPublishChannel,
+		_, err = m.node.Publish(utils.ServerPublishChannel,
 			[]byte(`{"type": "join", "actor": "game", "id": "`+joinData.IDGame.String()+`", "data": "`+player.Name+`"}`))
 		if err != nil {
 			m.log.Error().Msgf("manager publication error: %s", err.Error())
