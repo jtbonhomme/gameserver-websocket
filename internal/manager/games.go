@@ -56,12 +56,11 @@ func (m *Manager) CreateGame(data []byte, c centrifuge.RPCCallback) {
 	b, err = json.Marshal(createdGame)
 	if err != nil {
 		status = KO
-		msg = fmt.Sprintf("unable to marshal data %v: %s", game, err.Error())
+		msg = fmt.Sprintf("unable to marshal data %v: %s", createdGame, err.Error())
 		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 		return
 	}
 
-	m.log.Debug().Msgf("game state: %s", createdGame.CurrentState())
 	status = OK
 	msg = string(b)
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
@@ -111,7 +110,7 @@ func (m *Manager) StartGame(data []byte, c centrifuge.RPCCallback) {
 	}
 
 	// publication to all clients who subscribed to a channel
-	_, err = m.node.Publish(ServerPublishChannel,
+	_, err = m.node.Publish(game.TopicName,
 		[]byte(`{"type": "rpc", "actor": "game", "id": "`+game.ID.String()+`", "data": "revealTwoCards"}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())
@@ -160,8 +159,8 @@ func (m *Manager) IsGameStarted(data []byte, c centrifuge.RPCCallback) {
 	var started bool
 	var err error
 
-	var game games.Game
-	err = json.Unmarshal(data, &game)
+	var g games.Game
+	err = json.Unmarshal(data, &g)
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to unmarshal data %q: %s", string(data), err.Error())
@@ -169,10 +168,10 @@ func (m *Manager) IsGameStarted(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	started, err = m.store.IsGameStarted(game.ID.String())
+	started, err = m.store.IsGameStarted(g.ID.String())
 	if err != nil {
 		status = KO
-		msg = fmt.Sprintf("unable to stop game %v: %s", game, err.Error())
+		msg = fmt.Sprintf("unable to stop game %s: %s", g.ID.String(), err.Error())
 		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 		return
 	}
@@ -222,4 +221,30 @@ func (m *Manager) JoinGame(data []byte, c centrifuge.RPCCallback) {
 	status = OK
 	msg = EmptyJSON
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
+}
+
+// PlayerInit starts the game with a given ID.
+func (m *Manager) PlayerInit(data []byte, c centrifuge.RPCCallback) {
+	var status, msg string
+	var err error
+
+	m.log.Debug().Msg("calling playerInit")
+	var g games.Game
+	err = json.Unmarshal(data, &g)
+	if err != nil {
+		status = KO
+		msg = fmt.Sprintf("unable to unmarshal data %q: %s", string(data), err.Error())
+		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
+		return
+	}
+
+	game, err := m.store.GameByID(g.ID.String())
+	if err != nil {
+		status = KO
+		msg = fmt.Sprintf("unable to retrieve game from its ID: %s", err.Error())
+		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
+		return
+	}
+
+	game.PlayerInit()
 }

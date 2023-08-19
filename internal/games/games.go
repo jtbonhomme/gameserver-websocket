@@ -10,7 +10,6 @@ import (
 	"github.com/goombaio/namegenerator"
 	"github.com/rs/zerolog"
 
-	"github.com/jtbonhomme/gameserver-websocket/internal/state"
 	"github.com/jtbonhomme/gameserver-websocket/internal/utils"
 )
 
@@ -26,8 +25,9 @@ type Game struct {
 	MaxPlayers int `json:"maxPlayers"`
 	startTime  time.Time
 	endTime    time.Time
-	state      *state.State
+	started    bool
 	TopicName  string `json:"topicName"`
+	Name       string
 }
 
 // New creates a new game object with a minimum number of players
@@ -43,14 +43,17 @@ func New(l *zerolog.Logger, min, max int) *Game {
 	}
 	log := l.Output(output)
 
+	name := nameGenerator.Generate()
+
 	g := Game{
 		log:        &log,
 		ID:         gameID,
 		MinPlayers: min,
 		MaxPlayers: max,
 		players:    []string{},
-		state:      state.New(l),
-		TopicName:  GameTopicPrefix + nameGenerator.Generate(),
+		started:    false,
+		TopicName:  GameTopicPrefix + name,
+		Name:       name,
 	}
 
 	return &g
@@ -60,9 +63,7 @@ func New(l *zerolog.Logger, min, max int) *Game {
 // if the minimum player number registered is not reached, an
 // error is returned.
 func (game *Game) Start() error {
-	var err error
-
-	if game.IsStarted() {
+	if game.started {
 		return fmt.Errorf("game already started")
 	}
 
@@ -71,11 +72,7 @@ func (game *Game) Start() error {
 		return fmt.Errorf("min player number %d not reached yet", game.MinPlayers)
 	}
 
-	err = game.state.Start()
-	if err != nil {
-		return fmt.Errorf("game state can not be updated to start: %s", err.Error())
-	}
-
+	game.started = true
 	game.startTime = time.Now()
 
 	return nil
@@ -84,17 +81,11 @@ func (game *Game) Start() error {
 // Stop stops a started game. If the game is not started, an
 // error is returned.
 func (game *Game) Stop() error {
-	var err error
-
-	if !game.IsStarted() {
+	if !game.started {
 		return fmt.Errorf("game not started")
 	}
 
-	err = game.state.Stop()
-	if err != nil {
-		return fmt.Errorf("game state can not be updated to stop: %s", err.Error())
-	}
-
+	game.started = false
 	game.endTime = time.Now()
 
 	return nil
@@ -102,14 +93,14 @@ func (game *Game) Stop() error {
 
 // IsStarted returns true if the game is started.
 func (game *Game) IsStarted() bool {
-	return game.state.Current() == state.StartedState
+	return game.started
 }
 
 // AddPlayer register a player to the game. If the player is already registered,
 // the method does nothing. If the maximum number of players is alreary
 // reached, of if the game is already started, the methods returns an error.
 func (game *Game) AddPlayer(id string) error {
-	if game.IsStarted() {
+	if game.started {
 		return errors.New("game alreay started")
 	}
 
@@ -130,7 +121,7 @@ func (game *Game) Players() []string {
 	return game.players
 }
 
-// CurrentState returns internal game state.
-func (game *Game) CurrentState() string {
-	return game.state.Current()
+// PlayerInit -.
+func (game *Game) PlayerInit() {
+
 }

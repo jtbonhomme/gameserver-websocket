@@ -16,6 +16,7 @@ import (
 
 const (
 	defaultShutdownTimeout        = 3 * time.Second
+	defaultRPCTimeout             = 10 * time.Second
 	ServerPublishChannel   string = "server-general"
 )
 
@@ -24,6 +25,7 @@ type Manager struct {
 	err                 chan error
 	node                *centrifuge.Node
 	shutdownTimeout     time.Duration
+	waitForRPCTimeout   time.Duration
 	store               storage.Storage
 	playersToClientsMap map[string]*centrifuge.Client
 }
@@ -62,6 +64,7 @@ func New(l *zerolog.Logger, s storage.Storage) *Manager {
 		log:                 &logger,
 		err:                 make(chan error),
 		shutdownTimeout:     defaultShutdownTimeout,
+		waitForRPCTimeout:   defaultRPCTimeout,
 		store:               s,
 		playersToClientsMap: make(map[string]*centrifuge.Client),
 	}
