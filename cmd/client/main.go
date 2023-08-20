@@ -162,7 +162,7 @@ func main() {
 	log.Debug().Msgf("wait 2s to call rpc playerInit")
 	time.Sleep(2 * time.Second)
 	log.Debug().Msgf("PLAYERINIT GAME %s", game.Name)
-	result, err = c.RPC(context.Background(), "playerInit", []byte(`{}`))
+	result, err = c.RPC(context.Background(), "playerInit", []byte(`{"idGame": "`+game.ID.String()+`", "idPlayer": "`+player.ID.String()+`"}`))
 	if err != nil {
 		log.Panic().Msgf("error executing RPC: %s", err.Error())
 	}

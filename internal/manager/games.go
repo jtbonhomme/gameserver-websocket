@@ -175,7 +175,7 @@ func (m *Manager) IsGameStarted(data []byte, c centrifuge.RPCCallback) {
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %t}`, status, started))}, nil)
 }
 
-type JoinGameData struct {
+type GamePlayerData struct {
 	IDGame   uuid.UUID `json:"idGame"`
 	IDPlayer uuid.UUID `json:"idPlayer"`
 }
@@ -185,7 +185,7 @@ func (m *Manager) JoinGame(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 	var err error
 
-	var joinData JoinGameData
+	var joinData GamePlayerData
 	err = json.Unmarshal(data, &joinData)
 	if err != nil {
 		status = KO
@@ -223,9 +223,8 @@ func (m *Manager) PlayerInit(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 	var err error
 
-	m.log.Debug().Msg("calling playerInit")
-	var g games.Game
-	err = json.Unmarshal(data, &g)
+	var initData GamePlayerData
+	err = json.Unmarshal(data, &initData)
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to unmarshal data %q: %s", string(data), err.Error())
@@ -233,13 +232,23 @@ func (m *Manager) PlayerInit(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	game, err := m.store.GameByID(g.ID.String())
+	game, err := m.store.GameByID(initData.IDGame.String())
 	if err != nil {
 		status = KO
-		msg = fmt.Sprintf("unable to retrieve game from its ID: %s", err.Error())
+		msg = fmt.Sprintf("unable to retrieve game from its ID %s: %s", initData.IDGame.String(), err.Error())
 		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 		return
 	}
 
-	game.PlayerInit()
+	err = game.PlayerInit(initData.IDPlayer.String())
+	if err != nil {
+		status = KO
+		msg = fmt.Sprintf("unable to init player %s: %s", initData.IDPlayer.String(), err.Error())
+		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
+		return
+	}
+
+	status = OK
+	msg = EmptyJSON
+	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 }

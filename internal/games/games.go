@@ -18,21 +18,26 @@ import (
 const (
 	GameTopicPrefix                string = "game-"
 	DefaultClientConnectionTimeout        = 10 * time.Second
+	DefaultWaitForRPCTimeout              = 10 * time.Second
 )
 
 type Game struct {
-	log        *zerolog.Logger
-	ID         uuid.UUID `json:"id"`
-	players    []string
-	MinPlayers int `json:"minPlayers"`
-	MaxPlayers int `json:"maxPlayers"`
-	startTime  time.Time
-	endTime    time.Time
-	started    bool
-	TopicName  string `json:"topicName"`
-	Name       string
-	client     *centrifuge.Client
-	sub        *centrifuge.Subscription
+	log               *zerolog.Logger
+	ID                uuid.UUID `json:"id"`
+	players           []string
+	MinPlayers        int `json:"minPlayers"`
+	MaxPlayers        int `json:"maxPlayers"`
+	startTime         time.Time
+	endTime           time.Time
+	started           bool
+	TopicName         string `json:"topicName"`
+	Name              string
+	client            *centrifuge.Client
+	sub               *centrifuge.Subscription
+	turn              int
+	waitForRPCTimeout time.Duration
+	playerAnswerMap   map[string]bool
+	wg                sync.WaitGroup
 }
 
 // New creates a new game object with a minimum number of players
@@ -51,14 +56,16 @@ func New(l *zerolog.Logger, min, max int) *Game {
 	name := nameGenerator.Generate()
 
 	g := Game{
-		log:        &log,
-		ID:         gameID,
-		MinPlayers: min,
-		MaxPlayers: max,
-		players:    []string{},
-		started:    false,
-		TopicName:  GameTopicPrefix + name,
-		Name:       name,
+		log:               &log,
+		ID:                gameID,
+		MinPlayers:        min,
+		MaxPlayers:        max,
+		players:           []string{},
+		started:           false,
+		TopicName:         GameTopicPrefix + name,
+		Name:              name,
+		turn:              0,
+		waitForRPCTimeout: DefaultWaitForRPCTimeout,
 	}
 
 	return &g
@@ -149,10 +156,16 @@ func (game *Game) Start() error {
 	if err != nil {
 		game.log.Error().Msgf("[%s] publication error: %s", game.Name, err.Error())
 	}
+
+	// TODO: here, initialize game
+
+	// wait for all players to initialize
+	go game.waitAllPlayersInitialized()
+
 	return nil
 }
 
-// Publish sends a message on the game dedicated topic.
+// publish sends a message on the game dedicated topic.
 // An error is sent in case game is not connected to the internal centrifuge node.
 func (game *Game) publish(message string) (centrifuge.PublishResult, error) {
 	if game.sub == nil {
@@ -209,12 +222,4 @@ func (game *Game) AddPlayer(id string) error {
 // Players returns game's registered players.
 func (game *Game) Players() []string {
 	return game.players
-}
-
-// PlayerInit -.
-func (game *Game) PlayerInit() error {
-	if !game.started {
-		return fmt.Errorf("[%s] game not started", game.Name)
-	}
-	return nil
 }
