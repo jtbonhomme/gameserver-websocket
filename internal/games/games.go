@@ -1,7 +1,7 @@
 package games
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -32,6 +32,7 @@ type Game struct {
 	TopicName  string `json:"topicName"`
 	Name       string
 	client     *centrifuge.Client
+	sub        *centrifuge.Subscription
 }
 
 // New creates a new game object with a minimum number of players
@@ -91,7 +92,7 @@ func (game *Game) Connect() error {
 	wg.Add(1)
 	err = game.client.Connect()
 	if err != nil {
-		return fmt.Errorf("centrifuge client connection error: %s", err.Error())
+		return fmt.Errorf("[%s] centrifuge client connection error: %s", game.Name, err.Error())
 	}
 
 	// Will automatically close done channel and end select after all RPC have been called.
@@ -104,7 +105,7 @@ func (game *Game) Connect() error {
 	// Blocks until done channel is closed, or timeout occurs.
 	select {
 	case <-done:
-		err = utils.Subscribe(game.log,
+		game.sub, err = utils.Subscribe(game.log,
 			game.client,
 			game.TopicName,
 			utils.WithSubscriptionConfig(
@@ -114,10 +115,13 @@ func (game *Game) Connect() error {
 			),
 			utils.WithPublicationHandler(game.publicationHandler),
 		)
+		if err != nil {
+			return fmt.Errorf("[%s] subscription failed: %s", game.Name, err.Error())
+		}
 
 		return nil
 	case <-time.After(DefaultClientConnectionTimeout):
-		return fmt.Errorf("waiting for client connection failed with timeout")
+		return fmt.Errorf("[%s] waiting for client connection failed with timeout", game.Name)
 	}
 
 }
@@ -126,26 +130,49 @@ func (game *Game) Connect() error {
 // if the minimum player number registered is not reached, an
 // error is returned.
 func (game *Game) Start() error {
+	var err error
+
 	if game.started {
-		return fmt.Errorf("game already started")
+		return fmt.Errorf("[%s] game already started", game.Name)
 	}
 
 	players := game.players
 	if game.MinPlayers != 0 && len(players) < game.MinPlayers {
-		return fmt.Errorf("min player number %d not reached yet", game.MinPlayers)
+		return fmt.Errorf("[%s] min player number %d not reached yet", game.Name, game.MinPlayers)
 	}
 
 	game.started = true
 	game.startTime = time.Now()
 
+	// publication to all clients who subscribed to a channel
+	_, err = game.publish(`{"type": "rpc", "emitter": "game", "id": "` + game.ID.String() + `", "data": "revealTwoCards"}`)
+	if err != nil {
+		game.log.Error().Msgf("[%s] publication error: %s", game.Name, err.Error())
+	}
 	return nil
+}
+
+// Publish sends a message on the game dedicated topic.
+// An error is sent in case game is not connected to the internal centrifuge node.
+func (game *Game) publish(message string) (centrifuge.PublishResult, error) {
+	if game.sub == nil {
+		return centrifuge.PublishResult{}, fmt.Errorf("subscription is nil")
+	}
+
+	res, err := game.sub.Publish(context.Background(),
+		[]byte(message))
+	if err != nil {
+		return centrifuge.PublishResult{}, err
+	}
+
+	return res, nil
 }
 
 // Stop stops a started game. If the game is not started, an
 // error is returned.
 func (game *Game) Stop() error {
 	if !game.started {
-		return fmt.Errorf("game not started")
+		return fmt.Errorf("[%s] game not started", game.Name)
 	}
 
 	game.started = false
@@ -164,15 +191,15 @@ func (game *Game) IsStarted() bool {
 // reached, of if the game is already started, the methods returns an error.
 func (game *Game) AddPlayer(id string) error {
 	if game.started {
-		return errors.New("game alreay started")
+		return fmt.Errorf("[%s] game alreay started", game.Name)
 	}
 
 	if len(game.players) == game.MaxPlayers {
-		return errors.New("maximum number of players alreay reached")
+		return fmt.Errorf("[%s] maximum number of players alreay reached", game.Name)
 	}
 
 	if utils.ContainsString(game.players, id) {
-		return fmt.Errorf("player id %s alreay joined the game", id)
+		return fmt.Errorf("[%s] player id %s alreay joined the game", game.Name, id)
 	}
 
 	game.players = append(game.players, id)
@@ -185,6 +212,9 @@ func (game *Game) Players() []string {
 }
 
 // PlayerInit -.
-func (game *Game) PlayerInit() {
-
+func (game *Game) PlayerInit() error {
+	if !game.started {
+		return fmt.Errorf("[%s] game not started", game.Name)
+	}
+	return nil
 }

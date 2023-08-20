@@ -68,7 +68,7 @@ func (m *Manager) CreateGame(data []byte, c centrifuge.RPCCallback) {
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 
 	_, err = m.node.Publish(utils.ServerPublishChannel,
-		[]byte(`{"type": "creation", "actor": "game", "id": "`+createdGame.ID.String()+`", "data": ""}`))
+		[]byte(`{"type": "creation", "emitter": "manager", "id": "`+createdGame.ID.String()+`", "data": ""}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())
 	}
@@ -106,14 +106,7 @@ func (m *Manager) StartGame(data []byte, c centrifuge.RPCCallback) {
 
 	// publication to all clients who subscribed to a channel
 	_, err = m.node.Publish(utils.ServerPublishChannel,
-		[]byte(`{"type": "start", "actor": "game", "id": "`+game.ID.String()+`", "data": ""}`))
-	if err != nil {
-		m.log.Error().Msgf("manager publication error: %s", err.Error())
-	}
-
-	// publication to all clients who subscribed to a channel
-	_, err = m.node.Publish(game.TopicName,
-		[]byte(`{"type": "rpc", "actor": "game", "id": "`+game.ID.String()+`", "data": "revealTwoCards"}`))
+		[]byte(`{"type": "start", "emitter": "manager", "id": "`+game.ID.String()+`", "data": ""}`))
 	if err != nil {
 		m.log.Error().Msgf("manager publication error: %s", err.Error())
 	}
@@ -214,7 +207,7 @@ func (m *Manager) JoinGame(data []byte, c centrifuge.RPCCallback) {
 		m.log.Error().Msgf("error retrieving player's name: %s", err.Error())
 	} else {
 		_, err = m.node.Publish(utils.ServerPublishChannel,
-			[]byte(`{"type": "join", "actor": "game", "id": "`+joinData.IDGame.String()+`", "data": "`+player.Name+`"}`))
+			[]byte(`{"type": "join", "emitter": "manager", "id": "`+joinData.IDGame.String()+`", "data": "`+player.Name+`"}`))
 		if err != nil {
 			m.log.Error().Msgf("manager publication error: %s", err.Error())
 		}

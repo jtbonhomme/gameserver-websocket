@@ -52,7 +52,7 @@ func main() {
 	wg.Wait()
 	log.Info().Msg("client connected")
 
-	err = utils.Subscribe(&log, c, utils.ServerPublishChannel)
+	_, err = utils.Subscribe(&log, c, utils.ServerPublishChannel)
 	if err != nil {
 		log.Error().Msgf("subscribe error: %s", err.Error())
 		return
@@ -111,10 +111,10 @@ func main() {
 	var publicationHandler = func(e centrifuge.PublicationEvent) {
 		log.Info().Msgf("[%s] publication event: %s", game.TopicName, string(e.Data))
 		var data struct {
-			Type  string `json:"type"`
-			Actor string `json:"actor"`
-			ID    string `json:"id"`
-			Data  string `json:"data"`
+			Type    string `json:"type"`
+			Emitter string `json:"emitter"`
+			ID      string `json:"id"`
+			Data    string `json:"data"`
 		}
 
 		err = json.Unmarshal(e.Data, &data)
@@ -129,7 +129,7 @@ func main() {
 		}
 	}
 
-	err = utils.Subscribe(&log,
+	_, err = utils.Subscribe(&log,
 		c,
 		game.TopicName,
 		utils.WithSubscriptionConfig(

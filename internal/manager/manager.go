@@ -84,7 +84,7 @@ func (m *Manager) Start() error {
 		LogHandler: m.handleLog,
 	})
 	if err != nil {
-		return fmt.Errorf("error creating centrifuge node: %w", err)
+		return fmt.Errorf("error creating centrifuge node: %s", err.Error())
 	}
 	m.node = node
 	m.node.OnConnect(func(client *centrifuge.Client) {
@@ -126,7 +126,7 @@ func (m *Manager) Start() error {
 	// to finish application gracefully.
 	err = m.node.Run()
 	if err != nil {
-		return fmt.Errorf("error running centrifuge node: %w", err)
+		return fmt.Errorf("error running centrifuge node: %s", err.Error())
 	}
 
 	// Configure HTTP routes.
@@ -143,7 +143,7 @@ func (m *Manager) Start() error {
 	go func() {
 		m.log.Info().Msgf("starting server, visit http://localhost:8000")
 		if err := http.ListenAndServe(":8000", nil); err != nil {
-			m.err <- fmt.Errorf("error listening on :8000: %w", err)
+			m.err <- fmt.Errorf("error listening on :8000: %s", err.Error())
 		}
 	}()
 

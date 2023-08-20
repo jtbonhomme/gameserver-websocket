@@ -33,7 +33,7 @@ func (s *SQLite) MigrateSchema() error {
 		);
 	`)
 	if err != nil {
-		return fmt.Errorf("failed to migrate schema: %w", err)
+		return fmt.Errorf("failed to migrate schema: %s", err.Error())
 	}
 
 	return nil

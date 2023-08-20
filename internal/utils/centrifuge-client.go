@@ -101,7 +101,7 @@ func WithSubscriptionConfig(config centrifuge.SubscriptionConfig) SubscriptionOp
 	}
 }
 
-func Subscribe(log *zerolog.Logger, c *centrifuge.Client, topicName string, opts ...SubscriptionOption) error {
+func Subscribe(log *zerolog.Logger, c *centrifuge.Client, topicName string, opts ...SubscriptionOption) (*centrifuge.Subscription, error) {
 	var wg sync.WaitGroup
 
 	subscriptionOpts := &SubscriptionOptions{}
@@ -111,7 +111,7 @@ func Subscribe(log *zerolog.Logger, c *centrifuge.Client, topicName string, opts
 
 	subscription, err := c.NewSubscription(topicName, subscriptionOpts.Config)
 	if err != nil {
-		return fmt.Errorf("new subscription to %s error: %s", topicName, err.Error())
+		return nil, fmt.Errorf("new subscription to %s error: %s", topicName, err.Error())
 	}
 
 	subscription.OnError(func(e centrifuge.SubscriptionErrorEvent) {
@@ -141,5 +141,5 @@ func Subscribe(log *zerolog.Logger, c *centrifuge.Client, topicName string, opts
 
 	wg.Wait()
 
-	return nil
+	return subscription, nil
 }

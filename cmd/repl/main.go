@@ -40,7 +40,7 @@ func main() {
 	wg.Wait()
 	log.Info().Msg("client connected")
 
-	err = utils.Subscribe(&log, c, utils.ServerPublishChannel)
+	_, err = utils.Subscribe(&log, c, utils.ServerPublishChannel)
 	if err != nil {
 		log.Error().Msgf("subscribe error: %s", err.Error())
 		return

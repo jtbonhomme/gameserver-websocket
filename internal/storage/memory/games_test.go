@@ -23,62 +23,66 @@ func TestMemoryGamesErrors(t *testing.T) {
 	// Start unknown game with error
 	err = mem.StartGame("fake")
 	if err == nil {
-		t.Errorf("Expected error when starting unknown game")
+		t.Errorf("expected error when starting unknown game")
 	}
 
 	// Start nil game id with error
 	err = mem.StartGame(uuid.Nil.String())
 	if err == nil {
-		t.Errorf("Expected error when starting unknown game")
+		t.Errorf("expected error when starting unknown game")
 	}
 
 	// Stop unknown game with error
 	err = mem.StopGame("fake")
 	if err == nil {
-		t.Errorf("Expected error when stopping unknown game")
+		t.Errorf("expected error when stopping unknown game")
 	}
 
 	// Stop nil game id with error
 	err = mem.StopGame(uuid.Nil.String())
 	if err == nil {
-		t.Errorf("Expected error when stopping nil game id")
+		t.Errorf("expected error when stopping nil game id")
 	}
 
 	_, err = mem.IsGameStarted("fake")
 	if err == nil {
-		t.Errorf("Expected error when checking if unknown game is started")
+		t.Errorf("expected error when checking if unknown game is started")
 	}
 
 	_, err = mem.IsGameStarted(uuid.Nil.String())
 	if err == nil {
-		t.Errorf("Expected error when checking if nil game id is started")
+		t.Errorf("expected error when checking if nil game id is started")
 	}
 
 	err = mem.JoinGame("fake", uuid.NewString())
 	if err == nil {
-		t.Errorf("Expected error when joining unknown game")
+		t.Errorf("expected error when joining unknown game")
 	}
 
 	err = mem.JoinGame(uuid.Nil.String(), uuid.NewString())
 	if err == nil {
-		t.Errorf("Expected error when joining nil game id")
+		t.Errorf("expected error when joining nil game id")
 	}
 
 	minPlayers := 0
 	maxPlayers := 8
 	game, err := mem.CreateGame(minPlayers, maxPlayers)
 	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if game == nil {
+		t.Fatal("created game is not uspposed to be nil")
 	}
 
 	err = mem.JoinGame(game.ID.String(), "fake")
 	if err == nil {
-		t.Errorf("Expected error when unknown player joining game")
+		t.Errorf("expected error when unknown player joining game")
 	}
 
 	err = mem.JoinGame(game.ID.String(), uuid.Nil.String())
 	if err == nil {
-		t.Errorf("Expected error when nil id player joining game")
+		t.Errorf("expected error when nil id player joining game")
 	}
 
 	player1, err := mem.RegisterPlayer("", "name1")
@@ -93,7 +97,7 @@ func TestMemoryGamesErrors(t *testing.T) {
 
 	err = mem.JoinGame(game.ID.String(), player1.ID.String())
 	if err == nil {
-		t.Errorf("Expected error when already joined player joining game")
+		t.Errorf("expected error when already joined player joining game")
 	}
 }
 
@@ -107,11 +111,11 @@ func TestMemoryGames(t *testing.T) {
 	maxPlayers := 4
 	game, err := mem.CreateGame(minPlayers, maxPlayers)
 	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		t.Errorf("unexpected error: %v", err)
 	}
 
 	if game == nil {
-		t.Fatal("Expected game to be created, got nil")
+		t.Fatal("expected game to be created, got nil")
 	}
 
 	id1 := game.ID.String()
@@ -120,81 +124,81 @@ func TestMemoryGames(t *testing.T) {
 	maxPlayers = 8
 	game, err = mem.CreateGame(minPlayers, maxPlayers)
 	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		t.Errorf("unexpected error: %v", err)
 	}
 
 	if game == nil {
-		t.Error("Expected game to be created, got nil")
+		t.Fatal("expected game to be created, got nil")
 	}
 
 	id2 := game.ID.String()
 
 	games := mem.ListGames()
 	if len(games) != 2 {
-		t.Errorf("Expected 2 games, got %d", len(games))
+		t.Errorf("expected 2 games, got %d", len(games))
 	}
 
 	// Start the game1 successfully
 	err = mem.StartGame(id1)
 	if err != nil {
-		t.Errorf("Unexpected error when starting the game: %v", err)
+		t.Errorf("unexpected error when starting the game: %v", err)
 	}
 
 	started, err := mem.IsGameStarted(id1)
 	if err != nil {
-		t.Errorf("Unexpected error when checkin if game1 is started: %v", err)
+		t.Errorf("unexpected error when checkin if game1 is started: %v", err)
 	}
 
 	if !started {
-		t.Error("Expected game to be started, but it's not")
+		t.Error("expected game to be started, but it's not")
 	}
 
 	// Attempt to start the same game again, should return an error
 	err = mem.StartGame(id1)
 	if err == nil {
-		t.Error("Expected error when starting an already started game")
+		t.Error("expected error when starting an already started game")
 	}
 
 	// Attempt to stop a game never started, should return an error
 	err = mem.StopGame(id2)
 	if err == nil {
-		t.Error("Expected error when stoppig a not started game")
+		t.Error("expected error when stoppig a not started game")
 	}
 
 	// Start the game2 successfully
 	err = mem.StartGame(id2)
 	if err != nil {
-		t.Errorf("Unexpected error when starting the game: %v", err)
+		t.Errorf("unexpected error when starting the game: %v", err)
 	}
 
 	started, err = mem.IsGameStarted(id2)
 	if err != nil {
-		t.Errorf("Unexpected error when checkin if game2 is started: %v", err)
+		t.Errorf("unexpected error when checkin if game2 is started: %v", err)
 	}
 
 	if !started {
-		t.Error("Expected game to be started, but it's not")
+		t.Error("expected game to be started, but it's not")
 	}
 
 	// Attempt to stop a game actually started successfully
 	err = mem.StopGame(id2)
 	if err != nil {
-		t.Errorf("Unexpected error when stopping game2: %v", err)
+		t.Errorf("unexpected error when stopping game2: %v", err)
 	}
 
 	started, err = mem.IsGameStarted(id2)
 	if err != nil {
-		t.Errorf("Unexpected error when checkin if game2 is started: %v", err)
+		t.Errorf("unexpected error when checkin if game2 is started: %v", err)
 	}
 
 	if started {
-		t.Error("Expected game to be stopped, but it's not")
+		t.Error("expected game to be stopped, but it's not")
 	}
 
 	// Attempt to stop the same game again, should return an error
 	err = mem.StopGame(id2)
 	if err == nil {
-		t.Error("Expected error when stopping an already stopped game")
+		t.Error("expected error when stopping an already stopped game")
 	}
 }
 
@@ -214,7 +218,11 @@ func TestMemoryJoinGames(t *testing.T) {
 	maxPlayers := 4
 	game, err := mem.CreateGame(minPlayers, maxPlayers)
 	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if game == nil {
+		t.Fatal("expected game to be created, got nil")
 	}
 
 	player1, err := mem.RegisterPlayer("", "name1")
@@ -261,7 +269,7 @@ func TestMemoryJoinGames(t *testing.T) {
 	// Start the game successfully
 	err = mem.StartGame(game.ID.String())
 	if err != nil {
-		t.Errorf("Unexpected error when starting the game: %v", err)
+		t.Errorf("unexpected error when starting the game: %v", err)
 	}
 
 	err = mem.JoinGame(game.ID.String(), player3.ID.String())
@@ -271,7 +279,7 @@ func TestMemoryJoinGames(t *testing.T) {
 
 	game2, err := mem.CreateGame(minPlayers, maxPlayers)
 	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		t.Errorf("unexpected error: %v", err)
 	}
 
 	err = mem.JoinGame(game2.ID.String(), player1.ID.String())
