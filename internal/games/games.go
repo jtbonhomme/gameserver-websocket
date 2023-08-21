@@ -12,6 +12,7 @@ import (
 	"github.com/goombaio/namegenerator"
 	"github.com/rs/zerolog"
 
+	"github.com/jtbonhomme/gameserver-websocket/internal/skyjo"
 	"github.com/jtbonhomme/gameserver-websocket/internal/utils"
 )
 
@@ -38,6 +39,8 @@ type Game struct {
 	waitForRPCTimeout time.Duration
 	playerAnswerMap   map[string]bool
 	wg                sync.WaitGroup
+	drawPileCards     utils.Stack[skyjo.Card]
+	discardPileCards  utils.Stack[skyjo.Card]
 }
 
 // New creates a new game object with a minimum number of players

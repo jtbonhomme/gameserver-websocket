@@ -59,3 +59,61 @@ func (game *Game) PlayerInit(pID string) error {
 
 	return nil
 }
+
+func (g *Game) resetTurn() (int, error) {
+	var firstPlayer int
+	/*var maxScore int
+
+	g.drawPileCards = utils.Stack[skyjo.Card]{}
+	for _, c := range skyjo.GenerateCards() {
+		g.drawPileCards.Push(c)
+	}
+	g.discardPileCards = utils.Stack[skyjo.Card]{}
+
+	// reset player's decks
+	for _, p := range g.players {
+		p.ResetDeck()
+	}
+
+	// deal 12 cards to each player
+	for i := 0; i < skyjo.CardsPerPlayer; i++ {
+		for _, p := range g.players {
+			card, ok := g.drawPileCards.Pop()
+			if !ok {
+				return firstPlayer, errors.New("too few cards in drawPile")
+			}
+
+			err := p.AddCard(card)
+			if err != nil {
+				return firstPlayer, fmt.Errorf("error adding card %v to deck of %s: %s", card, p.Name(), err.Error())
+			}
+		}
+	}
+
+	// each player reveal 2 cards
+	for i, p := range g.players {
+		err := p.StartTurn()
+		if err != nil {
+			return firstPlayer, fmt.Errorf("error initializing player %d: %w", i, err)
+		}
+	}
+
+	// decide first player
+	maxScore = -1
+	firstPlayer = -1
+
+	for i, p := range g.players {
+		if p.DeckValue() > maxScore {
+			maxScore = p.DeckValue()
+			firstPlayer = i
+		}
+	}
+
+	// return first card from drawPile
+	_, err := g.drawCard()
+	if err != nil {
+		return firstPlayer, fmt.Errorf("error drawing first card: %s", err.Error())
+	}
+	*/
+	return firstPlayer, nil
+}
