@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jtbonhomme/gameserver-websocket/internal/games"
+	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 	"github.com/rs/zerolog"
 )
 
@@ -20,8 +21,11 @@ func TestGame_Start(t *testing.T) {
 		t.Errorf("expected an error when starting the game as required numberof player is not reached: %v", err)
 	}
 
-	playerID := "player1"
-	err = game.AddPlayer(playerID)
+	player1 := players.Player{
+		Name: "player1",
+		ID:   uuid.New(),
+	}
+	err = game.AddPlayer(&player1)
 	if err != nil {
 		t.Errorf("Unexpected error when adding a player: %v", err)
 	}
@@ -31,7 +35,7 @@ func TestGame_Start(t *testing.T) {
 	}
 
 	// Add the same player again, should not add a duplicate
-	err = game.AddPlayer(playerID)
+	err = game.AddPlayer(&player1)
 	if err == nil {
 		t.Errorf("expected error when adding same player twice: %v", err)
 	}
@@ -41,7 +45,10 @@ func TestGame_Start(t *testing.T) {
 	}
 
 	// Add another player
-	err = game.AddPlayer("player2")
+	err = game.AddPlayer(&players.Player{
+		Name: "player2",
+		ID:   uuid.New(),
+	})
 	if err != nil {
 		t.Errorf("Unexpected error when adding a player: %v", err)
 	}
@@ -78,8 +85,11 @@ func TestGame_Stop(t *testing.T) {
 		t.Errorf("expected an error when starting the game as required numberof player is not reached: %v", err)
 	}
 
-	playerID := "player1"
-	err = game.AddPlayer(playerID)
+	player1 := players.Player{
+		Name: "player1",
+		ID:   uuid.New(),
+	}
+	err = game.AddPlayer(&player1)
 	if err != nil {
 		t.Errorf("Unexpected error when adding a player: %v", err)
 	}
@@ -89,7 +99,7 @@ func TestGame_Stop(t *testing.T) {
 	}
 
 	// Add the same player again, should not add a duplicate
-	err = game.AddPlayer(playerID)
+	err = game.AddPlayer(&player1)
 	if err == nil {
 		t.Errorf("expected error when adding a player already added: %v", err)
 	}
@@ -98,7 +108,10 @@ func TestGame_Stop(t *testing.T) {
 	}
 
 	// Add another player
-	err = game.AddPlayer("player2")
+	err = game.AddPlayer(&players.Player{
+		Name: "player2",
+		ID:   uuid.New(),
+	})
 	if err != nil {
 		t.Errorf("Unexpected error when adding a player: %v", err)
 	}
@@ -107,7 +120,10 @@ func TestGame_Stop(t *testing.T) {
 	}
 
 	// Add another player
-	err = game.AddPlayer("player3")
+	err = game.AddPlayer(&players.Player{
+		Name: "player3",
+		ID:   uuid.New(),
+	})
 	if err == nil {
 		t.Errorf("expected error when adding a player while max required number of players is reached: %v", err)
 	}

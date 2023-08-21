@@ -12,6 +12,7 @@ import (
 	"github.com/goombaio/namegenerator"
 	"github.com/rs/zerolog"
 
+	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 	"github.com/jtbonhomme/gameserver-websocket/internal/skyjo"
 	"github.com/jtbonhomme/gameserver-websocket/internal/utils"
 )
@@ -25,7 +26,7 @@ const (
 type Game struct {
 	log               *zerolog.Logger
 	ID                uuid.UUID `json:"id"`
-	players           []string
+	players           []*players.Player
 	MinPlayers        int `json:"minPlayers"`
 	MaxPlayers        int `json:"maxPlayers"`
 	startTime         time.Time
@@ -63,7 +64,7 @@ func New(l *zerolog.Logger, min, max int) *Game {
 		ID:                gameID,
 		MinPlayers:        min,
 		MaxPlayers:        max,
-		players:           []string{},
+		players:           []*players.Player{},
 		Started:           false,
 		TopicName:         GameTopicPrefix + name,
 		Name:              name,
@@ -209,24 +210,24 @@ func (game *Game) IsStarted() bool {
 // AddPlayer adds a player to the game. If the player already joined the game,
 // the method does nothing. If the maximum number of players is alreary
 // reached, of if the game is already Started, the methods returns an error.
-func (game *Game) AddPlayer(id string) error {
+func (game *Game) AddPlayer(player *players.Player) error {
 	if game.Started {
 		return fmt.Errorf("[%s] game alreay Started", game.Name)
 	}
 
 	if len(game.players) == game.MaxPlayers {
-		return fmt.Errorf("[%s] maximum number of players alreay reached", game.Name)
+		return fmt.Errorf("[%s] maximum number of players alreay reached", game.Name)
 	}
 
-	if utils.ContainsString(game.players, id) {
-		return fmt.Errorf("[%s] player id %s alreay joined the game", game.Name, id)
+	if players.ContainsID(game.players, player.ID) {
+		return fmt.Errorf("[%s] player id %s alreay joined the game", game.Name, player.ID.String())
 	}
 
-	game.players = append(game.players, id)
+	game.players = append(game.players, player)
 	return nil
 }
 
 // Players returns game's registered players.
-func (game *Game) Players() []string {
+func (game *Game) Players() []*players.Player {
 	return game.players
 }

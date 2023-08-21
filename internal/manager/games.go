@@ -204,12 +204,20 @@ func (m *Manager) JoinGame(data []byte, c centrifuge.RPCCallback) {
 	game, err := m.gameByID(req.IDGame.String())
 	if err != nil {
 		status = KO
-		msg = fmt.Sprintf("unable to retrieve game from its ID: %s", err.Error())
+		msg = fmt.Sprintf("unable to retrieve game from its ID %s: %s", req.IDGame.String(), err.Error())
 		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 		return
 	}
 
-	err = game.AddPlayer(req.IDPlayer.String())
+	player, err := m.playerByID(req.IDPlayer.String())
+	if err != nil {
+		status = KO
+		msg = fmt.Sprintf("unable to retrieve player from its ID %s: %s", req.IDPlayer.String(), err.Error())
+		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
+		return
+	}
+
+	err = game.AddPlayer(player)
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to make player %s join game %s: %s", req.IDPlayer.String(), req.IDGame.String(), err.Error())
@@ -219,15 +227,10 @@ func (m *Manager) JoinGame(data []byte, c centrifuge.RPCCallback) {
 
 	m.games[game.ID.String()] = game
 
-	player, err := m.playerByID(req.IDPlayer.String())
+	_, err = m.node.Publish(utils.ServerPublishChannel,
+		[]byte(`{"type": "join", "emitter": "manager", "id": "`+req.IDGame.String()+`", "data": "`+player.Name+`"}`))
 	if err != nil {
-		m.log.Error().Msgf("error retrieving player's name: %s", err.Error())
-	} else {
-		_, err = m.node.Publish(utils.ServerPublishChannel,
-			[]byte(`{"type": "join", "emitter": "manager", "id": "`+req.IDGame.String()+`", "data": "`+player.Name+`"}`))
-		if err != nil {
-			m.log.Error().Msgf("manager publication error: %s", err.Error())
-		}
+		m.log.Error().Msgf("manager publication error: %s", err.Error())
 	}
 
 	status = OK

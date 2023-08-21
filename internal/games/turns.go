@@ -38,9 +38,9 @@ func (game *Game) waitAllPlayersInitialized() {
 	game.log.Info().Msgf("[%s] wait all players to initialize", game.Name)
 
 	game.playerAnswerMap = make(map[string]bool)
-	for _, pID := range game.Players() {
+	for _, player := range game.Players() {
 		game.wg.Add(1)
-		game.playerAnswerMap[pID] = false
+		game.playerAnswerMap[player.ID.String()] = false
 	}
 
 	// Will automatically close done channel and end select after all RPC have been called.
