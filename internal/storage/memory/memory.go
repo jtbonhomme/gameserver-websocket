@@ -7,14 +7,12 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/jtbonhomme/gameserver-websocket/internal/games"
 	"github.com/jtbonhomme/gameserver-websocket/internal/players"
 )
 
 type Memory struct {
 	log     *zerolog.Logger
 	players map[string]*players.Player
-	games   map[string]*games.Game
 }
 
 // New creates a new Memory object.
@@ -29,7 +27,6 @@ func New(l *zerolog.Logger) *Memory {
 	mem := &Memory{
 		log:     &log,
 		players: make(map[string]*players.Player),
-		games:   make(map[string]*games.Game),
 	}
 
 	return mem

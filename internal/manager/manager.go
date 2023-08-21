@@ -8,10 +8,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/jtbonhomme/gameserver-websocket/internal/storage"
-
 	"github.com/centrifugal/centrifuge"
 	"github.com/rs/zerolog"
+
+	"github.com/jtbonhomme/gameserver-websocket/internal/games"
+	"github.com/jtbonhomme/gameserver-websocket/internal/players"
+	"github.com/jtbonhomme/gameserver-websocket/internal/storage"
 )
 
 const (
@@ -25,6 +27,8 @@ type Manager struct {
 	shutdownTimeout     time.Duration
 	store               storage.Storage
 	playersToClientsMap map[string]*centrifuge.Client
+	players             map[string]*players.Player
+	games               map[string]*games.Game
 }
 
 type IDData struct {
@@ -63,6 +67,8 @@ func New(l *zerolog.Logger, s storage.Storage) *Manager {
 		shutdownTimeout:     defaultShutdownTimeout,
 		store:               s,
 		playersToClientsMap: make(map[string]*centrifuge.Client),
+		players:             make(map[string]*players.Player),
+		games:               make(map[string]*games.Game),
 	}
 }
 

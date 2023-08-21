@@ -134,7 +134,7 @@ func TestPlayers(t *testing.T) {
 	}
 
 	if len(players1) != 2 {
-		t.Errorf("expected 2 registered players")
+		t.Errorf("expected 2 registered players but got %d", len(players1))
 	}
 
 	for _, p := range players1 {

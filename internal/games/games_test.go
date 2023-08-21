@@ -56,13 +56,13 @@ func TestGame_Start(t *testing.T) {
 	}
 
 	if !game.IsStarted() {
-		t.Error("Expected game to be started, but it's not")
+		t.Error("Expected game to be Started, but it's not")
 	}
 
-	// Attempt to start an already started game, should return an error
+	// Attempt to start an already Started game, should return an error
 	err = game.Start()
 	if err == nil {
-		t.Error("Expected error when starting an already started game")
+		t.Error("Expected error when starting an already Started game")
 	}
 }
 
@@ -123,7 +123,7 @@ func TestGame_Stop(t *testing.T) {
 	}
 
 	if !game.IsStarted() {
-		t.Error("Expected game to be started, but it's not")
+		t.Error("Expected game to be Started, but it's not")
 	}
 
 	// Stop the game successfully
@@ -133,7 +133,7 @@ func TestGame_Stop(t *testing.T) {
 	}
 
 	if game.IsStarted() {
-		t.Error("Expected game to be stopped, but it's still started")
+		t.Error("Expected game to be stopped, but it's still Started")
 	}
 
 	// Attempt to stop an already stopped game, should return an error

@@ -48,8 +48,8 @@ func (game *Game) startTurnLoop() {
 
 // PlayerInit -.
 func (game *Game) PlayerInit(pID string) error {
-	if !game.started {
-		return fmt.Errorf("[%s] game not started", game.Name)
+	if !game.Started {
+		return fmt.Errorf("[%s] game not Started", game.Name)
 	}
 
 	if !game.playerAnswerMap[pID] {

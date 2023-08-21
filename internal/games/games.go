@@ -30,9 +30,9 @@ type Game struct {
 	MaxPlayers        int `json:"maxPlayers"`
 	startTime         time.Time
 	endTime           time.Time
-	started           bool
+	Started           bool   `json:"started"`
 	TopicName         string `json:"topicName"`
-	Name              string
+	Name              string `json:"name"`
 	client            *centrifuge.Client
 	sub               *centrifuge.Subscription
 	turn              int
@@ -64,7 +64,7 @@ func New(l *zerolog.Logger, min, max int) *Game {
 		MinPlayers:        min,
 		MaxPlayers:        max,
 		players:           []string{},
-		started:           false,
+		Started:           false,
 		TopicName:         GameTopicPrefix + name,
 		Name:              name,
 		turn:              0,
@@ -136,14 +136,14 @@ func (game *Game) Connect() error {
 
 }
 
-// Start starts the game. If the game is already started, or
+// Start starts the game. If the game is already Started, or
 // if the minimum player number registered is not reached, an
 // error is returned.
 func (game *Game) Start() error {
 	var err error
 
-	if game.started {
-		return fmt.Errorf("[%s] game already started", game.Name)
+	if game.Started {
+		return fmt.Errorf("[%s] game already Started", game.Name)
 	}
 
 	players := game.players
@@ -151,7 +151,7 @@ func (game *Game) Start() error {
 		return fmt.Errorf("[%s] min player number %d not reached yet", game.Name, game.MinPlayers)
 	}
 
-	game.started = true
+	game.Started = true
 	game.startTime = time.Now()
 
 	// publication to all clients who subscribed to a channel
@@ -184,30 +184,30 @@ func (game *Game) publish(message string) (centrifuge.PublishResult, error) {
 	return res, nil
 }
 
-// Stop stops a started game. If the game is not started, an
+// Stop stops a Started game. If the game is not Started, an
 // error is returned.
 func (game *Game) Stop() error {
-	if !game.started {
-		return fmt.Errorf("[%s] game not started", game.Name)
+	if !game.Started {
+		return fmt.Errorf("[%s] game not Started", game.Name)
 	}
 
-	game.started = false
+	game.Started = false
 	game.endTime = time.Now()
 
 	return nil
 }
 
-// IsStarted returns true if the game is started.
+// IsStarted returns true if the game is Started.
 func (game *Game) IsStarted() bool {
-	return game.started
+	return game.Started
 }
 
 // AddPlayer register a player to the game. If the player is already registered,
 // the method does nothing. If the maximum number of players is alreary
-// reached, of if the game is already started, the methods returns an error.
+// reached, of if the game is already Started, the methods returns an error.
 func (game *Game) AddPlayer(id string) error {
-	if game.started {
-		return fmt.Errorf("[%s] game alreay started", game.Name)
+	if game.Started {
+		return fmt.Errorf("[%s] game alreay Started", game.Name)
 	}
 
 	if len(game.players) == game.MaxPlayers {

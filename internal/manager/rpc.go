@@ -14,7 +14,6 @@ const (
 	CreateGame       string = "createGame"
 	StartGame        string = "startGame"
 	StopGame         string = "stopGame"
-	IsGameStarted    string = "isGameStarted"
 	JoinGame         string = "joinGame"
 	PlayerInit       string = "playerInit"
 )
@@ -45,8 +44,6 @@ func (m *Manager) HandleRPC(e centrifuge.RPCEvent, c centrifuge.RPCCallback) {
 		m.StartGame(e.Data, c)
 	case StopGame:
 		m.StopGame(e.Data, c)
-	case IsGameStarted:
-		m.IsGameStarted(e.Data, c)
 	case JoinGame:
 		m.JoinGame(e.Data, c)
 	case PlayerInit:
