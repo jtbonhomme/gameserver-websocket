@@ -5,7 +5,33 @@ import (
 	"time"
 )
 
-// wait for all players to initialize
+// turnsLoop runs turns in a loop.
+func (game *Game) turnsLoop() error {
+	var gameIsOver bool
+
+	for !gameIsOver {
+		var err error
+
+		_, err = game.newTurn()
+		if err != nil {
+			return fmt.Errorf("error reseting game: %w", err)
+		}
+		/*
+			var turnIsOver bool
+			for !turnIsOver {
+			}
+		*/
+	}
+
+	return nil
+}
+
+// newTurn initializes a new turn.
+func (game *Game) newTurn() (int, error) {
+	return 0, nil
+}
+
+// waitAllPlayersInitialized waits for all players to initialize.
 func (game *Game) waitAllPlayersInitialized() {
 	var done = make(chan struct{})
 
@@ -60,7 +86,7 @@ func (game *Game) PlayerInit(pID string) error {
 	return nil
 }
 
-func (g *Game) resetTurn() (int, error) {
+func (game *Game) resetTurn() (int, error) {
 	var firstPlayer int
 	/*var maxScore int
 

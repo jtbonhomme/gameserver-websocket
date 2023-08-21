@@ -160,10 +160,14 @@ func (game *Game) Start() error {
 		game.log.Error().Msgf("[%s] publication error: %s", game.Name, err.Error())
 	}
 
-	// TODO: here, initialize game
-
 	// wait for all players to initialize
-	go game.waitAllPlayersInitialized()
+	// TODO: handle goroutine termination
+	go func() {
+		err := game.turnsLoop()
+		if err != nil {
+			game.log.Error().Msgf("turn loop error: %s", err.Error())
+		}
+	}()
 
 	return nil
 }
@@ -202,7 +206,7 @@ func (game *Game) IsStarted() bool {
 	return game.Started
 }
 
-// AddPlayer register a player to the game. If the player is already registered,
+// AddPlayer adds a player to the game. If the player already joined the game,
 // the method does nothing. If the maximum number of players is alreary
 // reached, of if the game is already Started, the methods returns an error.
 func (game *Game) AddPlayer(id string) error {
