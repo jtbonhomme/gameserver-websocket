@@ -18,15 +18,16 @@ import (
 )
 
 const (
-	GameTopicPrefix                string = "game-"
-	DefaultClientConnectionTimeout        = 10 * time.Second
-	DefaultWaitForRPCTimeout              = 10 * time.Second
+	GameTopicPrefix                string        = "game-"
+	DefaultClientConnectionTimeout time.Duration = 10 * time.Second
+	DefaultWaitForRPCTimeout       time.Duration = 10 * time.Second
 )
 
 type Game struct {
 	log               *zerolog.Logger
 	ID                uuid.UUID `json:"id"`
 	players           []*players.Player
+	decks             []*skyjo.Deck
 	MinPlayers        int `json:"minPlayers"`
 	MaxPlayers        int `json:"maxPlayers"`
 	startTime         time.Time
@@ -38,7 +39,7 @@ type Game struct {
 	sub               *centrifuge.Subscription
 	turn              int
 	waitForRPCTimeout time.Duration
-	playerAnswerMap   map[string]bool
+	playerAnswerMap   map[string]int
 	wg                sync.WaitGroup
 	drawPileCards     utils.Stack[skyjo.Card]
 	discardPileCards  utils.Stack[skyjo.Card]
@@ -65,6 +66,7 @@ func New(l *zerolog.Logger, min, max int) *Game {
 		MinPlayers:        min,
 		MaxPlayers:        max,
 		players:           []*players.Player{},
+		decks:             []*skyjo.Deck{},
 		Started:           false,
 		TopicName:         GameTopicPrefix + name,
 		Name:              name,
@@ -134,15 +136,12 @@ func (game *Game) Connect() error {
 	case <-time.After(DefaultClientConnectionTimeout):
 		return fmt.Errorf("[%s] waiting for client connection failed with timeout", game.Name)
 	}
-
 }
 
 // Start starts the game. If the game is already Started, or
 // if the minimum player number registered is not reached, an
 // error is returned.
 func (game *Game) Start() error {
-	var err error
-
 	if game.Started {
 		return fmt.Errorf("[%s] game already Started", game.Name)
 	}
@@ -155,13 +154,7 @@ func (game *Game) Start() error {
 	game.Started = true
 	game.startTime = time.Now()
 
-	// publication to all clients who subscribed to a channel
-	_, err = game.publish(`{"type": "rpc", "emitter": "game", "id": "` + game.ID.String() + `", "data": "revealTwoCards"}`)
-	if err != nil {
-		game.log.Error().Msgf("[%s] publication error: %s", game.Name, err.Error())
-	}
-
-	// wait for all players to initialize
+	// start game loop in a go routine.
 	// TODO: handle goroutine termination
 	go func() {
 		err := game.turnsLoop()
@@ -224,6 +217,7 @@ func (game *Game) AddPlayer(player *players.Player) error {
 	}
 
 	game.players = append(game.players, player)
+
 	return nil
 }
 

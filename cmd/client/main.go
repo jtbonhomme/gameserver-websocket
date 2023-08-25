@@ -101,7 +101,10 @@ func main() {
 		log.Panic().Msgf("error unmarshaling Player: %s", err.Error())
 	}
 
-	log.Debug().Msgf("JOIN GAME %s", game.Name)
+	log.Debug().Msgf("wait 2s to call rpc join game")
+	time.Sleep(2 * time.Second)
+
+	log.Debug().Msgf("join game %s", game.Name)
 	result, err = c.RPC(context.Background(), "joinGame", []byte(`{"idGame": "`+game.ID.String()+`", "idPlayer": "`+player.ID.String()+`"}`))
 	if err != nil {
 		log.Panic().Msgf("error executing RPC: %s", err.Error())
@@ -121,7 +124,6 @@ func main() {
 		if err != nil {
 			log.Error().Msgf("error while unmarshaling data %q: %s", string(e.Data), err.Error())
 		}
-		log.Info().Msgf("[%s] publication event: %#v", game.TopicName, data)
 
 		if data.Type == "rpc" && data.Data == "revealTwoCards" {
 			log.Info().Msgf("[%s] revealTwoCards publication event !", game.TopicName)
@@ -146,8 +148,11 @@ func main() {
 
 	log.Debug().Msgf("subscribed topic %s", game.TopicName)
 
+	log.Debug().Msgf("wait 2s to call rpc start game")
+	time.Sleep(2 * time.Second)
+
 	wg.Add(1)
-	log.Debug().Msgf("START GAME %s", game.Name)
+	log.Debug().Msgf("start game %s", game.Name)
 	result, err = c.RPC(context.Background(), "startGame", []byte(`{"id": "`+game.ID.String()+`"}`))
 	if err != nil {
 		log.Error().Msgf("error executing RPC: %s", err.Error())
@@ -159,14 +164,27 @@ func main() {
 	wg.Wait()
 	log.Debug().Msgf("received subscribe event revealTwoCards")
 
-	log.Debug().Msgf("wait 2s to call rpc playerInit")
+	log.Debug().Msgf("wait 2s to call rpc revealcard")
 	time.Sleep(2 * time.Second)
-	log.Debug().Msgf("PLAYERINIT GAME %s", game.Name)
-	result, err = c.RPC(context.Background(), "playerInit", []byte(`{"idGame": "`+game.ID.String()+`", "idPlayer": "`+player.ID.String()+`"}`))
+
+	log.Debug().Msgf("Reveal card 0 %s", game.Name)
+	result, err = c.RPC(context.Background(), "revealCard",
+		[]byte(`{"idGame": "`+game.ID.String()+`", "idPlayer": "`+player.ID.String()+`", "cardNumber": 0}`))
 	if err != nil {
 		log.Panic().Msgf("error executing RPC: %s", err.Error())
 	}
-	log.Debug().Msgf("playerInit result: %s", string(result.Data))
+	log.Debug().Msgf("revealCard result: %s", string(result.Data))
+
+	log.Debug().Msgf("wait 2s to call rpc revealcard")
+	time.Sleep(2 * time.Second)
+
+	log.Debug().Msgf("Reveal card 1 %s", game.Name)
+	result, err = c.RPC(context.Background(), "revealCard",
+		[]byte(`{"idGame": "`+game.ID.String()+`", "idPlayer": "`+player.ID.String()+`", "cardNumber": 1}`))
+	if err != nil {
+		log.Panic().Msgf("error executing RPC: %s", err.Error())
+	}
+	log.Debug().Msgf("revealCard result: %s", string(result.Data))
 
 	// Waiting signal
 	interrupt := make(chan os.Signal, 1)

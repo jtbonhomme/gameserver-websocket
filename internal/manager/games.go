@@ -74,6 +74,14 @@ func (m *Manager) CreateGame(data []byte, c centrifuge.RPCCallback) {
 	}
 
 	game := games.New(m.log, req.MinPlayers, req.MaxPlayers)
+	err = game.Connect()
+	if err != nil {
+		status = KO
+		msg = fmt.Sprintf("unable to connect game %v: %s", game, err.Error())
+		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
+		return
+	}
+	m.games[game.ID.String()] = game
 
 	b, err = json.Marshal(game)
 	if err != nil {
@@ -82,8 +90,6 @@ func (m *Manager) CreateGame(data []byte, c centrifuge.RPCCallback) {
 		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 		return
 	}
-
-	m.games[game.ID.String()] = game
 
 	status = OK
 	msg = string(b)
@@ -183,8 +189,9 @@ func (m *Manager) StopGame(data []byte, c centrifuge.RPCCallback) {
 }
 
 type GamePlayerRequest struct {
-	IDGame   uuid.UUID `json:"idGame"`
-	IDPlayer uuid.UUID `json:"idPlayer"`
+	IDGame     uuid.UUID `json:"idGame"`
+	IDPlayer   uuid.UUID `json:"idPlayer"`
+	CardNumber int       `json:"cardNumber"`
 }
 
 // JoinGame adds a player to a game.
@@ -238,13 +245,13 @@ func (m *Manager) JoinGame(data []byte, c centrifuge.RPCCallback) {
 	c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 }
 
-// PlayerInit starts the game with a given ID.
-func (m *Manager) PlayerInit(data []byte, c centrifuge.RPCCallback) {
+// RevealCard turns a card visible from a player's deck.
+func (m *Manager) RevealCard(data []byte, c centrifuge.RPCCallback) {
 	var status, msg string
 	var err error
 
-	var initData GamePlayerRequest
-	err = json.Unmarshal(data, &initData)
+	var cardData GamePlayerRequest
+	err = json.Unmarshal(data, &cardData)
 	if err != nil {
 		status = KO
 		msg = fmt.Sprintf("unable to unmarshal data %q: %s", string(data), err.Error())
@@ -252,18 +259,18 @@ func (m *Manager) PlayerInit(data []byte, c centrifuge.RPCCallback) {
 		return
 	}
 
-	game, err := m.gameByID(initData.IDGame.String())
+	game, err := m.gameByID(cardData.IDGame.String())
 	if err != nil {
 		status = KO
-		msg = fmt.Sprintf("unable to retrieve game from its ID %s: %s", initData.IDGame.String(), err.Error())
+		msg = fmt.Sprintf("unable to retrieve game from its ID %s: %s", cardData.IDGame.String(), err.Error())
 		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 		return
 	}
 
-	err = game.PlayerInit(initData.IDPlayer.String())
+	err = game.RevealCard(cardData.IDPlayer.String(), cardData.CardNumber)
 	if err != nil {
 		status = KO
-		msg = fmt.Sprintf("unable to init player %s: %s", initData.IDPlayer.String(), err.Error())
+		msg = fmt.Sprintf("unable to init player %s: %s", cardData.IDPlayer.String(), err.Error())
 		c(centrifuge.RPCReply{Data: []byte(fmt.Sprintf(`{"status": %q, "result": %q}`, status, msg))}, nil)
 		return
 	}

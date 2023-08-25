@@ -1,8 +1,16 @@
 package games
 
 import (
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jtbonhomme/gameserver-websocket/internal/skyjo"
+	"github.com/jtbonhomme/gameserver-websocket/internal/utils"
+)
+
+const (
+	maxScore int = 100
 )
 
 // turnsLoop runs turns in a loop.
@@ -14,7 +22,7 @@ func (game *Game) turnsLoop() error {
 
 		_, err = game.newTurn()
 		if err != nil {
-			return fmt.Errorf("error reseting game: %w", err)
+			return fmt.Errorf("error reseting game: %s", err.Error())
 		}
 		/*
 			var turnIsOver bool
@@ -28,118 +36,119 @@ func (game *Game) turnsLoop() error {
 
 // newTurn initializes a new turn.
 func (game *Game) newTurn() (int, error) {
-	return 0, nil
-}
+	var err error
+	var firstPlayer int = -1
+	var maxScore int = -1
 
-// waitAllPlayersInitialized waits for all players to initialize.
-func (game *Game) waitAllPlayersInitialized() {
-	var done = make(chan struct{})
-
-	game.log.Info().Msgf("[%s] wait all players to initialize", game.Name)
-
-	game.playerAnswerMap = make(map[string]bool)
-	for _, player := range game.Players() {
-		game.wg.Add(1)
-		game.playerAnswerMap[player.ID.String()] = false
-	}
-
-	// Will automatically close done channel and end select after all RPC have been called.
-	go func() {
-		game.log.Debug().Msgf("[%s] waiting...", game.Name)
-		defer close(done)
-		game.wg.Wait()
-		game.log.Debug().Msgf("[%s] WaitGroup done !", game.Name)
-	}()
-
-	// Blocks until done channel is closed, or timeout occurs.
-	game.log.Debug().Msgf("wait for InitRPC")
-	select {
-	case <-done:
-		game.log.Debug().Msgf("channel closed")
-		game.log.Debug().Msgf("exit waitForInitRPC")
-		go game.startTurnLoop()
-		return
-	case <-time.After(game.waitForRPCTimeout):
-		game.log.Debug().Msgf("** timeout **")
-		game.log.Debug().Msgf("exit waitForInitRPC")
-		// TODO handle game termination
-	}
-
-}
-
-func (game *Game) startTurnLoop() {
-	game.log.Info().Msgf("[%s] enter turn loop", game.Name)
-	// TODO: here, initialize turn
-}
-
-// PlayerInit -.
-func (game *Game) PlayerInit(pID string) error {
-	if !game.Started {
-		return fmt.Errorf("[%s] game not Started", game.Name)
-	}
-
-	if !game.playerAnswerMap[pID] {
-		game.playerAnswerMap[pID] = true
-		game.wg.Done()
-	}
-
-	return nil
-}
-
-func (game *Game) resetTurn() (int, error) {
-	var firstPlayer int
-	/*var maxScore int
-
-	g.drawPileCards = utils.Stack[skyjo.Card]{}
+	game.log.Debug().Msgf("[%s] new turn ...", game.Name)
+	game.drawPileCards = utils.Stack[skyjo.Card]{}
 	for _, c := range skyjo.GenerateCards() {
-		g.drawPileCards.Push(c)
+		game.drawPileCards.Push(c)
 	}
-	g.discardPileCards = utils.Stack[skyjo.Card]{}
+	game.discardPileCards = utils.Stack[skyjo.Card]{}
 
 	// reset player's decks
-	for _, p := range g.players {
-		p.ResetDeck()
+	game.decks = []*skyjo.Deck{}
+	for i := 0; i < len(game.players); i++ {
+		game.decks = append(game.decks, skyjo.NewDeck())
 	}
 
 	// deal 12 cards to each player
 	for i := 0; i < skyjo.CardsPerPlayer; i++ {
-		for _, p := range g.players {
-			card, ok := g.drawPileCards.Pop()
+		for j, p := range game.players {
+			card, ok := game.drawPileCards.Pop()
 			if !ok {
 				return firstPlayer, errors.New("too few cards in drawPile")
 			}
 
-			err := p.AddCard(card)
+			err = game.decks[j].AddCard(card)
 			if err != nil {
-				return firstPlayer, fmt.Errorf("error adding card %v to deck of %s: %s", card, p.Name(), err.Error())
+				return firstPlayer, fmt.Errorf("error adding card %v to deck of %s: %s", card, p.Name, err.Error())
 			}
 		}
 	}
 
-	// each player reveal 2 cards
-	for i, p := range g.players {
-		err := p.StartTurn()
-		if err != nil {
-			return firstPlayer, fmt.Errorf("error initializing player %d: %w", i, err)
-		}
+	// ask to each player to reveal 2 cards
+	// publication to all clients who subscribed to a channel
+	game.log.Debug().Msgf("[%s] publish a call to rpc: revealTwoCards", game.Name)
+	_, err = game.publish(`{"type": "rpc", "emitter": "game", "id": "` + game.ID.String() + `", "data": "revealTwoCards"}`)
+	if err != nil {
+		game.log.Error().Msgf("[%s] publication error: %s", game.Name, err.Error())
+	}
+
+	err = game.waitPlayersRevealCards(2)
+	if err != nil {
+		return firstPlayer, fmt.Errorf("error initializing players: %s", err.Error())
 	}
 
 	// decide first player
-	maxScore = -1
-	firstPlayer = -1
-
-	for i, p := range g.players {
-		if p.DeckValue() > maxScore {
-			maxScore = p.DeckValue()
+	for i, _ := range game.players {
+		if game.decks[i].Value() > maxScore {
+			maxScore = game.decks[i].Value()
 			firstPlayer = i
 		}
 	}
 
 	// return first card from drawPile
-	_, err := g.drawCard()
+	_, err = game.drawCard()
 	if err != nil {
 		return firstPlayer, fmt.Errorf("error drawing first card: %s", err.Error())
 	}
-	*/
+
 	return firstPlayer, nil
+}
+
+// waitPlayersRevealCards waits for all players to reveal n cards.
+func (game *Game) waitPlayersRevealCards(n int) error {
+	var done = make(chan struct{})
+
+	game.playerAnswerMap = make(map[string]int)
+	for _, player := range game.players {
+		game.wg.Add(n)
+		game.playerAnswerMap[player.ID.String()] = 0
+	}
+
+	// Will automatically close done channel and end select after all RPC have been called.
+	go func() {
+		defer close(done)
+		game.wg.Wait()
+		game.log.Debug().Msgf("[%s] ... done !", game.Name)
+	}()
+
+	// Blocks until done channel is closed, or timeout occurs.
+	game.log.Debug().Msgf("[%s] wait for all players to send rpc reveal two cards twice ...", game.Name)
+	select {
+	case <-done:
+		return nil
+	case <-time.After(game.waitForRPCTimeout):
+		return fmt.Errorf("wait ended after timeout")
+	}
+}
+
+// RevealCard turns a card visible from a player's deck.
+func (game *Game) RevealCard(pID string, card int) error {
+	game.log.Debug().Msgf("[%s] player %s reveal card %d", game.Name, pID, card)
+	if !game.Started {
+		return fmt.Errorf("[%s] game not started", game.Name)
+	}
+
+	i, err := game.playerByID(pID)
+	if err != nil {
+		return fmt.Errorf("unknown player id: %s", err.Error())
+	}
+
+	err = game.revealCard(i, card)
+	if err != nil {
+		return fmt.Errorf("error revealing card %d on deck %d: %s", card, i, err.Error())
+	}
+
+	count, ok := game.playerAnswerMap[pID]
+	if !ok {
+		return fmt.Errorf("unknown player id")
+	}
+
+	game.playerAnswerMap[pID] = count + 1
+	game.wg.Done()
+
+	return nil
 }
